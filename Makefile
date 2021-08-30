@@ -45,6 +45,9 @@ all: build/test_contracts build/test_rlp build/generator build/validator build/g
 all-via-docker: generate-protocol
 	mkdir -p build
 	docker run --rm -v `pwd`:/code ${BUILDER_DOCKER} bash -c "cd /code && make"
+log-version-via-docker: generate-protocol
+	mkdir -p build
+	docker run --rm -v `pwd`:/code ${BUILDER_DOCKER} bash -c "cd /code && make build/generator_log && make build/validator_log"
 
 clean-via-docker:
 	mkdir -p build

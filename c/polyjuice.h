@@ -549,7 +549,7 @@ struct evmc_result call(struct evmc_host_context* context,
   debug_print_data("call.destination", msg->destination.bytes, 20);
   int ret;
   struct evmc_result res;
-  memset(&res, 0, sizeof(res));
+  fast_memset(&res, 0, sizeof(res));
   res.release = release_result;
   gw_context_t* gw_ctx = context->gw_ctx;
 
@@ -1201,7 +1201,7 @@ int run_polyjuice() {
   init_evm_memory(evm_memory, MAX_EVM_MEMORY_SIZE);
 
   struct evmc_result res;
-  memset(&res, 0, sizeof(evmc_result));
+  fast_memset(&res, 0, sizeof(evmc_result));
   res.status_code = EVMC_FAILURE; // Generic execution failure
 
   int ret_handle_message = handle_message(&context, UINT32_MAX, UINT32_MAX, NULL, &msg, &res);

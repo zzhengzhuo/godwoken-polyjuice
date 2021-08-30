@@ -11,10 +11,10 @@
 
 #ifdef NO_DEBUG_LOG
 #undef ckb_debug
-#define ckb_debug(s) {}
-#define debug_print(s) {}
-#define debug_print_int(prefix, value) {}
-#define debug_print_data(prefix, data, data_len) {}
+#define ckb_debug(s) do {} while (0)
+#define debug_print(s) do {} while (0)
+#define debug_print_int(prefix, value) do {} while (0)
+#define debug_print_data(prefix, data, data_len) do {} while (0)
 #else /* NO_DEBUG_LOG */
 /* 64 KB */
 #define DEBUG_BUFFER_SIZE 65536
@@ -46,6 +46,11 @@ void debug_print_int(const char* prefix, int64_t ret) {
 
 /* polyjuice contract account (normal/create2) script args size*/
 static const uint32_t CONTRACT_ACCOUNT_SCRIPT_ARGS_SIZE = 32 + 4 + 20;
+
+void *fast_memset(void *dest, int c, size_t n) {
+  return _smt_fast_memset(dest, c, n);
+}
+// TODO: #define memset(dest, c, n) fast_memset(dest, c, n)
 
 int build_script(const uint8_t code_hash[32], const uint8_t hash_type,
                  const uint8_t* args, const uint32_t args_len,
