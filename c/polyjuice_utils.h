@@ -50,7 +50,7 @@ static const uint32_t CONTRACT_ACCOUNT_SCRIPT_ARGS_SIZE = 32 + 4 + 20;
 void *fast_memset(void *dest, int c, size_t n) {
   return _smt_fast_memset(dest, c, n);
 }
-// TODO: #define memset(dest, c, n) fast_memset(dest, c, n)
+#define memset(dest, c, n) fast_memset(dest, c, n)
 
 int build_script(const uint8_t code_hash[32], const uint8_t hash_type,
                  const uint8_t* args, const uint32_t args_len,
