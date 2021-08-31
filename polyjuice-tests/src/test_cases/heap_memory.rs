@@ -77,7 +77,7 @@ fn test_heap_momory() {
                 &raw_tx,
             )
             .expect("success to malloc memory");
-        // [newMemory less than 512K] used cycles: 752,115 < 760K
+        // [newMemory less than 512K] used cycles: 752290 < 760K
         helper::check_cycles("new Memory", run_result.used_cycles, 760_000);
         println!(
             "\t new byte(about {}K) => call result {:?}",
