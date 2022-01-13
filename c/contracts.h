@@ -8,6 +8,7 @@
 #include <bn128.hpp>
 
 #include "polyjuice_utils.h"
+#include "validate_signature_rsa.c"
 #include "sudt_contracts.h"
 #include "other_contracts.h"
 
@@ -22,14 +23,14 @@
 #define IDENTITY_BASE_GAS 15       // Base price for a data copy operation
 #define IDENTITY_PERWORD_GAS 3     // Per-work price for a data copy operation
 
-#define BN256_ADD_GAS_BYZANTIUM              500    // Byzantium gas needed for an elliptic curve addition
-#define BN256_ADD_GAS_ISTANBUL               150    // Gas needed for an elliptic curve addition
-#define BN256_SCALAR_MUL_GAS_BYZANTIUM       40000  // Byzantium gas needed for an elliptic curve scalar multiplication
-#define BN256_SCALAR_MUL_GAS_ISTANBUL        6000   // Gas needed for an elliptic curve scalar multiplication
-#define BN256_PAIRING_BASE_GAS_BYZANTIUM     100000 // Byzantium base price for an elliptic curve pairing check
-#define BN256_PAIRING_BASE_GAS_ISTANBUL      45000  // Base price for an elliptic curve pairing check
-#define BN256_PAIRING_PERPOINT_GAS_BYZANTIUM 80000  // Byzantium per-point price for an elliptic curve pairing check
-#define BN256_PAIRING_PERPOINT_GAS_ISTANBUL  34000  // Per-point price for an elliptic curve pairing check
+#define BN256_ADD_GAS_BYZANTIUM 500                // Byzantium gas needed for an elliptic curve addition
+#define BN256_ADD_GAS_ISTANBUL 150                 // Gas needed for an elliptic curve addition
+#define BN256_SCALAR_MUL_GAS_BYZANTIUM 40000       // Byzantium gas needed for an elliptic curve scalar multiplication
+#define BN256_SCALAR_MUL_GAS_ISTANBUL 6000         // Gas needed for an elliptic curve scalar multiplication
+#define BN256_PAIRING_BASE_GAS_BYZANTIUM 100000    // Byzantium base price for an elliptic curve pairing check
+#define BN256_PAIRING_BASE_GAS_ISTANBUL 45000      // Base price for an elliptic curve pairing check
+#define BN256_PAIRING_PERPOINT_GAS_BYZANTIUM 80000 // Byzantium per-point price for an elliptic curve pairing check
+#define BN256_PAIRING_PERPOINT_GAS_ISTANBUL 34000  // Per-point price for an elliptic curve pairing check
 
 #define BLAKE2F_INPUT_LENGTH 213
 #define BLAKE2F_FINAL_BLOCK_BYTES 0x1
@@ -37,19 +38,20 @@
 
 /* pre-compiled Ethereum contracts */
 
-typedef int (*precompiled_contract_gas_fn)(const uint8_t* input_src,
+typedef int (*precompiled_contract_gas_fn)(const uint8_t *input_src,
                                            const size_t input_size,
-                                           uint64_t* gas);
-typedef int (*precompiled_contract_fn)(gw_context_t* ctx,
-                                       const uint8_t* code_data,
+                                           uint64_t *gas);
+typedef int (*precompiled_contract_fn)(gw_context_t *ctx,
+                                       const uint8_t *code_data,
                                        const size_t code_size,
                                        bool is_static_call,
-                                       const uint8_t* input_src,
+                                       const uint8_t *input_src,
                                        const size_t input_size,
-                                       uint8_t** output, size_t* output_size);
+                                       uint8_t **output, size_t *output_size);
 
-int ecrecover_required_gas(const uint8_t* input, const size_t input_size,
-                           uint64_t* gas) {
+int ecrecover_required_gas(const uint8_t *input, const size_t input_size,
+                           uint64_t *gas)
+{
   // Elliptic curve sender recovery gas price
   *gas = 3000;
   return 0;
@@ -69,12 +71,13 @@ int ecrecover_required_gas(const uint8_t* input, const size_t input_size,
          [64..96 ] => r
          [96..128] => s
  */
-int ecrecover(gw_context_t* ctx,
-              const uint8_t* code_data,
+int ecrecover(gw_context_t *ctx,
+              const uint8_t *code_data,
               const size_t code_size,
               bool is_static_call,
-              const uint8_t* input_src,
-              const size_t input_size, uint8_t** output, size_t* output_size) {
+              const uint8_t *input_src,
+              const size_t input_size, uint8_t **output, size_t *output_size)
+{
   int ret;
   secp256k1_context context;
   uint8_t secp_data[CKB_SECP256K1_DATA_SIZE];
@@ -83,15 +86,18 @@ int ecrecover(gw_context_t* ctx,
 #else
   ret = ckb_secp256k1_custom_verify_only_initialize(&context, secp_data);
 #endif
-  if (ret != 0) {
+  if (ret != 0)
+  {
     return FATAL_PRECOMPILED_CONTRACTS;
   }
 
   uint8_t input[128] = {0};
   size_t real_size = input_size > 128 ? 128 : input_size;
   memcpy(input, input_src, real_size);
-  for (int i = 32; i < 63; i++) {
-    if (input[i] != 0) {
+  for (int i = 32; i < 63; i++)
+  {
+    if (input[i] != 0)
+    {
       ckb_debug("input[32:63] not all zero!");
       return 0;
     }
@@ -100,7 +106,8 @@ int ecrecover(gw_context_t* ctx,
 
   /* crypto.ValidateSignatureValues(v, r, s, false) */
   /* NOTE: r,s overflow will be checked in secp256k1 library code */
-  if (recid != 0 && recid != 1) {
+  if (recid != 0 && recid != 1)
+  {
     ckb_debug("v value is not in {27,28}");
     return 0;
   }
@@ -110,13 +117,15 @@ int ecrecover(gw_context_t* ctx,
   memcpy(signature_data + 32, input + 96, 32);
   secp256k1_ecdsa_recoverable_signature signature;
   if (secp256k1_ecdsa_recoverable_signature_parse_compact(
-          &context, &signature, signature_data, recid) == 0) {
+          &context, &signature, signature_data, recid) == 0)
+  {
     ckb_debug("parse signature failed");
     return 0;
   }
   /* Recover pubkey */
   secp256k1_pubkey pubkey;
-  if (secp256k1_ecdsa_recover(&context, &pubkey, &signature, input) != 1) {
+  if (secp256k1_ecdsa_recover(&context, &pubkey, &signature, input) != 1)
+  {
     ckb_debug("recover public key failed");
     return 0;
   }
@@ -125,14 +134,16 @@ int ecrecover(gw_context_t* ctx,
   uint8_t temp[65];
   size_t pubkey_size = 65;
   if (secp256k1_ec_pubkey_serialize(&context, temp, &pubkey_size, &pubkey,
-                                    SECP256K1_EC_UNCOMPRESSED) != 1) {
+                                    SECP256K1_EC_UNCOMPRESSED) != 1)
+  {
     ckb_debug("public key serialize failed");
     return FATAL_PRECOMPILED_CONTRACTS;
   }
 
   union ethash_hash256 hash_result = ethash::keccak256(temp + 1, 64);
-  *output = (uint8_t*)malloc(32);
-  if (*output == NULL) {
+  *output = (uint8_t *)malloc(32);
+  if (*output == NULL)
+  {
     return FATAL_PRECOMPILED_CONTRACTS;
   }
   memset(*output, 0, 12);
@@ -141,21 +152,24 @@ int ecrecover(gw_context_t* ctx,
   return 0;
 }
 
-int sha256hash_required_gas(const uint8_t* input, const size_t input_size,
-                            uint64_t* gas) {
+int sha256hash_required_gas(const uint8_t *input, const size_t input_size,
+                            uint64_t *gas)
+{
   *gas =
       (uint64_t)(input_size + 31) / 32 * SHA256_PERWORD_GAS + SHA256_BASE_GAS;
   return 0;
 }
 
-int sha256hash(gw_context_t* ctx,
-               const uint8_t* code_data,
+int sha256hash(gw_context_t *ctx,
+               const uint8_t *code_data,
                const size_t code_size,
                bool is_static_call,
-               const uint8_t* input_src,
-               const size_t input_size, uint8_t** output, size_t* output_size) {
-  *output = (uint8_t*)malloc(32);
-  if (*output == NULL) {
+               const uint8_t *input_src,
+               const size_t input_size, uint8_t **output, size_t *output_size)
+{
+  *output = (uint8_t *)malloc(32);
+  if (*output == NULL)
+  {
     return FATAL_PRECOMPILED_CONTRACTS;
   }
   *output_size = 32;
@@ -166,26 +180,30 @@ int sha256hash(gw_context_t* ctx,
   return 0;
 }
 
-int ripemd160hash_required_gas(const uint8_t* input, const size_t input_size,
-                               uint64_t* gas) {
+int ripemd160hash_required_gas(const uint8_t *input, const size_t input_size,
+                               uint64_t *gas)
+{
   *gas = (uint64_t)(input_size + 31) / 32 * RIPEMD160_PERWORD_GAS +
          RIPEMD160_BASE_GAS;
   return 0;
 }
 
-int ripemd160hash(gw_context_t* ctx,
-                  const uint8_t* code_data,
+int ripemd160hash(gw_context_t *ctx,
+                  const uint8_t *code_data,
                   const size_t code_size,
                   bool is_static_call,
-                  const uint8_t* input_src,
-                  const size_t input_size, uint8_t** output,
-                  size_t* output_size) {
-  if (input_size > (size_t)UINT32_MAX) {
+                  const uint8_t *input_src,
+                  const size_t input_size, uint8_t **output,
+                  size_t *output_size)
+{
+  if (input_size > (size_t)UINT32_MAX)
+  {
     /* input_size overflow */
     return FATAL_PRECOMPILED_CONTRACTS;
   }
-  *output = (uint8_t*)malloc(32);
-  if (*output == NULL) {
+  *output = (uint8_t *)malloc(32);
+  if (*output == NULL)
+  {
     return -1;
   }
   memset(*output, 0, 12);
@@ -194,21 +212,24 @@ int ripemd160hash(gw_context_t* ctx,
   return 0;
 }
 
-int data_copy_required_gas(const uint8_t* input, const size_t input_size,
-                           uint64_t* gas) {
+int data_copy_required_gas(const uint8_t *input, const size_t input_size,
+                           uint64_t *gas)
+{
   *gas = (uint64_t)(input_size + 31) / 32 * IDENTITY_PERWORD_GAS +
          IDENTITY_BASE_GAS;
   return 0;
 }
 
-int data_copy(gw_context_t* ctx,
-              const uint8_t* code_data,
+int data_copy(gw_context_t *ctx,
+              const uint8_t *code_data,
               const size_t code_size,
               bool is_static_call,
-              const uint8_t* input_src,
-              const size_t input_size, uint8_t** output, size_t* output_size) {
-  *output = (uint8_t*)malloc(input_size);
-  if (*output == NULL) {
+              const uint8_t *input_src,
+              const size_t input_size, uint8_t **output, size_t *output_size)
+{
+  *output = (uint8_t *)malloc(input_size);
+  if (*output == NULL)
+  {
     return FATAL_PRECOMPILED_CONTRACTS;
   }
   *output_size = input_size;
@@ -216,9 +237,10 @@ int data_copy(gw_context_t* ctx,
   return 0;
 }
 
-int read_lens(const uint8_t* input, const size_t input_size,
-              mbedtls_mpi* base_len, mbedtls_mpi* exp_len, mbedtls_mpi* mod_len,
-              size_t* base_size, size_t* exp_size, size_t* mod_size) {
+int read_lens(const uint8_t *input, const size_t input_size,
+              mbedtls_mpi *base_len, mbedtls_mpi *exp_len, mbedtls_mpi *mod_len,
+              size_t *base_size, size_t *exp_size, size_t *mod_size)
+{
   int ret;
 
   uint8_t padded_input[96] = {0};
@@ -229,38 +251,44 @@ int read_lens(const uint8_t* input, const size_t input_size,
   mbedtls_mpi_init(exp_len);
   mbedtls_mpi_init(mod_len);
   ret = mbedtls_mpi_read_binary(base_len, padded_input, 32);
-  if (ret != 0) {
+  if (ret != 0)
+  {
     goto read_lens_error;
   }
   ret = mbedtls_mpi_read_binary(exp_len, padded_input + 32, 32);
-  if (ret != 0) {
+  if (ret != 0)
+  {
     goto read_lens_error;
   }
   ret = mbedtls_mpi_read_binary(mod_len, padded_input + 64, 32);
-  if (ret != 0) {
+  if (ret != 0)
+  {
     goto read_lens_error;
   }
 
-  ret = mbedtls_mpi_write_binary_le(base_len, (unsigned char*)(base_size),
+  ret = mbedtls_mpi_write_binary_le(base_len, (unsigned char *)(base_size),
                                     sizeof(size_t));
-  if (ret != 0) {
+  if (ret != 0)
+  {
     goto read_lens_error;
   }
-  ret = mbedtls_mpi_write_binary_le(exp_len, (unsigned char*)(exp_size),
+  ret = mbedtls_mpi_write_binary_le(exp_len, (unsigned char *)(exp_size),
                                     sizeof(size_t));
-  if (ret != 0) {
+  if (ret != 0)
+  {
     goto read_lens_error;
   }
-  ret = mbedtls_mpi_write_binary_le(mod_len, (unsigned char*)(mod_size),
+  ret = mbedtls_mpi_write_binary_le(mod_len, (unsigned char *)(mod_size),
                                     sizeof(size_t));
-  if (ret != 0) {
+  if (ret != 0)
+  {
     goto read_lens_error;
   }
 
   /* NOTE: if success, don't free base_len/exp_len/mod_len */
   return 0;
 
- read_lens_error:
+read_lens_error:
   mbedtls_mpi_free(base_len);
   mbedtls_mpi_free(exp_len);
   mbedtls_mpi_free(mod_len);
@@ -276,19 +304,26 @@ int read_lens(const uint8_t* input, const size_t input_size,
 //    else: return x ** 2 // 16 + 480 * x - 199680
 //
 // where is x is max(length_of_MODULUS, length_of_BASE)
-uint128_t modexp_mult_complexity(uint128_t x) {
-  if (x <= 64) {
+uint128_t modexp_mult_complexity(uint128_t x)
+{
+  if (x <= 64)
+  {
     return x * x;
-  } else if (x <= 1024) {
+  }
+  else if (x <= 1024)
+  {
     return x * x / 4 + 96 * x - 3072;
-  } else {
+  }
+  else
+  {
     return x * x / 16 + 480 * x - 199680;
   }
 }
 
 /* EIP-2565: Big integer modular exponentiation: false */
-int big_mod_exp_required_gas(const uint8_t* input, const size_t input_size,
-                             uint64_t* target_gas) {
+int big_mod_exp_required_gas(const uint8_t *input, const size_t input_size,
+                             uint64_t *target_gas)
+{
   int ret;
   mbedtls_mpi base_len;
   mbedtls_mpi exp_len;
@@ -298,7 +333,9 @@ int big_mod_exp_required_gas(const uint8_t* input, const size_t input_size,
   size_t mod_size;
   ret = read_lens(input, input_size, &base_len, &exp_len, &mod_len, &base_size,
                   &exp_size, &mod_size);
-  if (ret != 0) {
+  if (ret != 0)
+  {
+    ckb_debug("0");
     /* if read_lens() failed, base_len/exp_len/mod_len already freed */
     return ERROR_MOD_EXP;
   }
@@ -320,10 +357,11 @@ int big_mod_exp_required_gas(const uint8_t* input, const size_t input_size,
 
   const size_t content_size = base_size + exp_size + mod_size;
   const size_t copy_size = input_size > content_size + 96
-    ? content_size
-    : (input_size > 96 ? input_size - 96 : 0);
-  uint8_t *content = (uint8_t*)malloc(content_size);
-  if (content == NULL) {
+                               ? content_size
+                               : (input_size > 96 ? input_size - 96 : 0);
+  uint8_t *content = (uint8_t *)malloc(content_size);
+  if (content == NULL)
+  {
     return_value = FATAL_PRECOMPILED_CONTRACTS;
     goto mod_exp_gas_cleanup;
   }
@@ -331,64 +369,82 @@ int big_mod_exp_required_gas(const uint8_t* input, const size_t input_size,
   memcpy(content, input + 96, copy_size);
 
   ret = mbedtls_mpi_read_binary(&exp_head, content + base_size, exp_head_size);
-  if (ret != 0) {
+  if (ret != 0)
+  {
+    ckb_debug("1");
     return_value = ERROR_MOD_EXP;
     goto mod_exp_gas_cleanup;
   }
   // Calculate the adjusted exponent length
   exp_head_bitlen = mbedtls_mpi_bitlen(&exp_head);
-  if (exp_head_bitlen > 0) {
+  if (exp_head_bitlen > 0)
+  {
     msb = exp_head_bitlen - 1;
   }
-  if (exp_size > 32) {
+  if (exp_size > 32)
+  {
     ret = mbedtls_mpi_sub_int(&adj_exp_len, &exp_len, 32);
-    if (ret != 0) {
+    if (ret != 0)
+    {
+    ckb_debug("2");
       return_value = ERROR_MOD_EXP;
       goto mod_exp_gas_cleanup;
     }
     ret = mbedtls_mpi_mul_int(&adj_exp_len, &adj_exp_len, 8);
-    if (ret != 0) {
+    if (ret != 0)
+    {
+      ckb_debug("3");
       return_value = ERROR_MOD_EXP;
       goto mod_exp_gas_cleanup;
     }
   }
   ret = mbedtls_mpi_add_int(&adj_exp_len, &adj_exp_len, msb);
-  if (ret != 0) {
+  if (ret != 0)
+  {
+    ckb_debug("4");
     return_value = ERROR_MOD_EXP;
     goto mod_exp_gas_cleanup;
   }
   // Calculate the gas cost of the operation
   base_gas = mod_size > base_size ? mod_size : base_size;
   gas = modexp_mult_complexity((uint128_t)base_gas);
-  ret = mbedtls_mpi_read_binary_le(&gas_big, (unsigned char*)(&gas), 16);
-  if (ret != 0) {
+  ret = mbedtls_mpi_read_binary_le(&gas_big, (unsigned char *)(&gas), 16);
+  if (ret != 0)
+  {
     return_value = ERROR_MOD_EXP;
     goto mod_exp_gas_cleanup;
   }
-  if (mbedtls_mpi_cmp_int(&adj_exp_len, 1) > 0) {
+  if (mbedtls_mpi_cmp_int(&adj_exp_len, 1) > 0)
+  {
     ret = mbedtls_mpi_mul_mpi(&gas_big, &gas_big, &adj_exp_len);
-    if (ret != 0) {
+    if (ret != 0)
+    {
       return_value = ERROR_MOD_EXP;
       goto mod_exp_gas_cleanup;
     }
   }
   ret = mbedtls_mpi_div_int(&gas_big, NULL, &gas_big, 20);
-  if (ret != 0) {
+  if (ret != 0)
+  {
     return_value = ERROR_MOD_EXP;
     goto mod_exp_gas_cleanup;
   }
 
-  if (mbedtls_mpi_bitlen(&gas_big) > 64) {
+  if (mbedtls_mpi_bitlen(&gas_big) > 64)
+  {
     *target_gas = UINT64_MAX;
-  } else {
-    ret = mbedtls_mpi_write_binary_le(&gas_big, (unsigned char*)(target_gas), sizeof(uint64_t));
-    if (ret != 0) {
+  }
+  else
+  {
+    ret = mbedtls_mpi_write_binary_le(&gas_big, (unsigned char *)(target_gas), sizeof(uint64_t));
+    if (ret != 0)
+    {
       return_value = ERROR_MOD_EXP;
       goto mod_exp_gas_cleanup;
     }
   }
 
- mod_exp_gas_cleanup:
+mod_exp_gas_cleanup:
   mbedtls_mpi_free(&base_len);
   mbedtls_mpi_free(&exp_len);
   mbedtls_mpi_free(&mod_len);
@@ -401,13 +457,14 @@ int big_mod_exp_required_gas(const uint8_t* input, const size_t input_size,
 }
 
 /* EIP-2565: Big integer modular exponentiation: false */
-int big_mod_exp(gw_context_t* ctx,
-                const uint8_t* code_data,
+int big_mod_exp(gw_context_t *ctx,
+                const uint8_t *code_data,
                 const size_t code_size,
                 bool is_static_call,
-                const uint8_t* input_src,
-                const size_t input_size, uint8_t** output,
-                size_t* output_size) {
+                const uint8_t *input_src,
+                const size_t input_size, uint8_t **output,
+                size_t *output_size)
+{
   int ret;
   mbedtls_mpi base_len;
   mbedtls_mpi exp_len;
@@ -417,13 +474,15 @@ int big_mod_exp(gw_context_t* ctx,
   size_t mod_size;
   ret = read_lens(input_src, input_size, &base_len, &exp_len, &mod_len,
                   &base_size, &exp_size, &mod_size);
-  if (ret != 0) {
+  if (ret != 0)
+  {
     /* if read_lens() failed, base_len/exp_len/mod_len already freed */
     return ERROR_MOD_EXP;
   }
 
   if (mbedtls_mpi_cmp_int(&base_len, 0) == 0 &&
-      mbedtls_mpi_cmp_int(&mod_len, 0) == 0) {
+      mbedtls_mpi_cmp_int(&mod_len, 0) == 0)
+  {
     *output = NULL;
     *output_size = 0;
     mbedtls_mpi_free(&base_len);
@@ -444,56 +503,63 @@ int big_mod_exp(gw_context_t* ctx,
 
   const size_t content_size = base_size + exp_size + mod_size;
   const size_t copy_size = input_size > content_size + 96
-    ? content_size
-    : (input_size > 96 ? input_size - 96 : 0);
-  uint8_t *content = (uint8_t*)malloc(content_size);
-  if (content == NULL) {
+                               ? content_size
+                               : (input_size > 96 ? input_size - 96 : 0);
+  uint8_t *content = (uint8_t *)malloc(content_size);
+  if (content == NULL)
+  {
     return_value = FATAL_PRECOMPILED_CONTRACTS;
     goto mod_exp_cleanup;
   }
   memset(content, 0, content_size);
   memcpy(content, input_src + 96, copy_size);
 
-
   ret = mbedtls_mpi_read_binary(&base, content, base_size);
-  if (ret != 0) {
+  if (ret != 0)
+  {
     return_value = ERROR_MOD_EXP;
     goto mod_exp_cleanup;
   }
   ret = mbedtls_mpi_read_binary(&exp, content + base_size, exp_size);
-  if (ret != 0) {
+  if (ret != 0)
+  {
     return_value = ERROR_MOD_EXP;
     goto mod_exp_cleanup;
   }
   ret = mbedtls_mpi_read_binary(&mod, content + base_size + exp_size, mod_size);
-  if (ret != 0) {
+  if (ret != 0)
+  {
     return_value = ERROR_MOD_EXP;
     goto mod_exp_cleanup;
   }
 
-  *output = (uint8_t*)malloc(mod_size);
-  if (*output == NULL) {
+  *output = (uint8_t *)malloc(mod_size);
+  if (*output == NULL)
+  {
     return_value = ERROR_MOD_EXP;
     goto mod_exp_cleanup;
   }
   *output_size = mod_size;
-  if (mbedtls_mpi_bitlen(&mod) == 0) {
+  if (mbedtls_mpi_bitlen(&mod) == 0)
+  {
     memset(*output, 0, mod_size);
     goto mod_exp_cleanup;
   }
 
   ret = mbedtls_mpi_exp_mod(&result, &base, &exp, &mod, NULL);
-  if (ret != 0) {
+  if (ret != 0)
+  {
     return_value = ERROR_MOD_EXP;
     goto mod_exp_cleanup;
   }
   ret = mbedtls_mpi_write_binary(&result, *output, mod_size);
-  if (ret != 0) {
+  if (ret != 0)
+  {
     return_value = ERROR_MOD_EXP;
     goto mod_exp_cleanup;
   }
 
- mod_exp_cleanup:
+mod_exp_cleanup:
   mbedtls_mpi_free(&base_len);
   mbedtls_mpi_free(&exp_len);
   mbedtls_mpi_free(&mod_len);
@@ -520,14 +586,21 @@ static uint8_t precomputed[10][16] = {
     {10, 8, 7, 1, 2, 4, 6, 5, 15, 9, 3, 13, 11, 14, 12, 0},
 };
 static uint64_t iv[8] = {
-    0x6a09e667f3bcc908, 0xbb67ae8584caa73b, 0x3c6ef372fe94f82b,
-    0xa54ff53a5f1d36f1, 0x510e527fade682d1, 0x9b05688c2b3e6c1f,
-    0x1f83d9abfb41bd6b, 0x5be0cd19137e2179,
+    0x6a09e667f3bcc908,
+    0xbb67ae8584caa73b,
+    0x3c6ef372fe94f82b,
+    0xa54ff53a5f1d36f1,
+    0x510e527fade682d1,
+    0x9b05688c2b3e6c1f,
+    0x1f83d9abfb41bd6b,
+    0x5be0cd19137e2179,
 };
 
-int blake2f_required_gas(const uint8_t* input, const size_t input_size,
-                         uint64_t* target_gas) {
-  if (input_size != BLAKE2F_INPUT_LENGTH) {
+int blake2f_required_gas(const uint8_t *input, const size_t input_size,
+                         uint64_t *target_gas)
+{
+  if (input_size != BLAKE2F_INPUT_LENGTH)
+  {
     *target_gas = 0;
     return 0;
   }
@@ -537,7 +610,8 @@ int blake2f_required_gas(const uint8_t* input, const size_t input_size,
   return 0;
 }
 
-uint64_t rotate_left64(uint64_t x, int k) {
+uint64_t rotate_left64(uint64_t x, int k)
+{
   size_t n = 64;
   size_t s = (size_t)(k) & (n - 1);
   return x << s | x >> (n - s);
@@ -545,7 +619,8 @@ uint64_t rotate_left64(uint64_t x, int k) {
 
 /* function f_generic is translated from https://github.com/ethereum/go-ethereum/blob/8647233a8ec2a2410a078013ca12c38fdc229866/crypto/blake2b/blake2b_generic.go#L46-L180 */
 void f_generic(uint64_t h[8], uint64_t m[16], uint64_t c0, uint64_t c1,
-               uint64_t flag, uint64_t rounds) {
+               uint64_t flag, uint64_t rounds)
+{
   uint64_t v0 = h[0];
   uint64_t v1 = h[1];
   uint64_t v2 = h[2];
@@ -566,8 +641,9 @@ void f_generic(uint64_t h[8], uint64_t m[16], uint64_t c0, uint64_t c1,
   v13 ^= c1;
   v14 ^= flag;
 
-  for (uint64_t i = 0; i < rounds; i++) {
-    uint8_t* s = precomputed[i % 10];
+  for (uint64_t i = 0; i < rounds; i++)
+  {
+    uint8_t *s = precomputed[i % 10];
 
     v0 += m[s[0]];
     v0 += v4;
@@ -696,17 +772,20 @@ void f_generic(uint64_t h[8], uint64_t m[16], uint64_t c0, uint64_t c1,
 }
 
 /* https://eips.ethereum.org/EIPS/eip-152 */
-int blake2f(gw_context_t* ctx,
-            const uint8_t* code_data,
+int blake2f(gw_context_t *ctx,
+            const uint8_t *code_data,
             const size_t code_size,
             bool is_static_call,
-            const uint8_t* input_src,
-            const size_t input_size, uint8_t** output, size_t* output_size) {
-  if (input_size != BLAKE2F_INPUT_LENGTH) {
+            const uint8_t *input_src,
+            const size_t input_size, uint8_t **output, size_t *output_size)
+{
+  if (input_size != BLAKE2F_INPUT_LENGTH)
+  {
     return ERROR_BLAKE2F_INVALID_INPUT_LENGTH;
   }
   if (input_src[212] != BLAKE2F_NON_FINAL_BLOCK_BYTES &&
-      input_src[212] != BLAKE2F_FINAL_BLOCK_BYTES) {
+      input_src[212] != BLAKE2F_FINAL_BLOCK_BYTES)
+  {
     return ERROR_BLAKE2F_INVALID_FINAL_FLAG;
   }
 
@@ -717,11 +796,13 @@ int blake2f(gw_context_t* ctx,
   uint64_t h[8];
   uint64_t m[16];
   uint64_t t[2];
-  for (size_t i = 0; i < 8; i++) {
+  for (size_t i = 0; i < 8; i++)
+  {
     size_t offset = 4 + i * 8;
     memcpy(&h[i], input_src + offset, sizeof(uint64_t));
   }
-  for (size_t i = 0; i < 16; i++) {
+  for (size_t i = 0; i < 16; i++)
+  {
     size_t offset = 68 + i * 8;
     memcpy(&m[i], input_src + offset, sizeof(uint64_t));
   }
@@ -732,28 +813,34 @@ int blake2f(gw_context_t* ctx,
   /* TODO: maybe improve performance */
   f_generic(h, m, t[0], t[1], flag, (uint64_t)rounds);
 
-  *output = (uint8_t*)malloc(64);
-  if (*output == NULL) {
+  *output = (uint8_t *)malloc(64);
+  if (*output == NULL)
+  {
     return FATAL_PRECOMPILED_CONTRACTS;
   }
   *output_size = 64;
-  for (size_t i = 0; i < 8; i++) {
+  for (size_t i = 0; i < 8; i++)
+  {
     size_t offset = i * 8;
-    memcpy(*output + offset, (uint8_t*)(&h[i]), 8);
+    memcpy(*output + offset, (uint8_t *)(&h[i]), 8);
   }
   return 0;
 }
 
-
-int parse_curve_point(void *target, uint8_t *bytes) {
+int parse_curve_point(void *target, uint8_t *bytes)
+{
   intx::uint256 *p = (intx::uint256 *)target;
   p[0] = intx::be::unsafe::load<intx::uint256>(bytes);
   p[1] = intx::be::unsafe::load<intx::uint256>(bytes + 32);
-  if (p[0] == 0 && p[1] == 0) {
+  if (p[0] == 0 && p[1] == 0)
+  {
     p[2] = 0;
-  } else {
+  }
+  else
+  {
     p[2] = 1;
-    if (!bn128::g1::is_on_curve(p)) {
+    if (!bn128::g1::is_on_curve(p))
+    {
       ckb_debug("bn256: malformed point");
       return ERROR_BN256_INVALID_POINT;
     }
@@ -761,26 +848,29 @@ int parse_curve_point(void *target, uint8_t *bytes) {
   return 0;
 }
 
-int parse_twist_point(void *target, uint8_t *bytes) {
+int parse_twist_point(void *target, uint8_t *bytes)
+{
   /* FIXME: wait for pairing implementation ready */
   return 0;
 }
 
 /* bn256AddIstanbul */
-int bn256_add_istanbul_gas(const uint8_t* input_src,
+int bn256_add_istanbul_gas(const uint8_t *input_src,
                            const size_t input_size,
-                           uint64_t* gas) {
+                           uint64_t *gas)
+{
   *gas = BN256_ADD_GAS_ISTANBUL;
   return 0;
 }
 
-int bn256_add_istanbul(gw_context_t* ctx,
-                       const uint8_t* code_data,
+int bn256_add_istanbul(gw_context_t *ctx,
+                       const uint8_t *code_data,
                        const size_t code_size,
                        bool is_static_call,
-                       const uint8_t* input_src,
+                       const uint8_t *input_src,
                        const size_t input_size,
-                       uint8_t** output, size_t* output_size) {
+                       uint8_t **output, size_t *output_size)
+{
   int ret;
   /* If the input is shorter than expected, it is assumed to be virtually padded
      with zeros at the end (i.e. compatible with the semantics of the
@@ -795,17 +885,20 @@ int bn256_add_istanbul(gw_context_t* ctx,
 
   memcpy(real_input, input_src, real_size);
   ret = parse_curve_point((void *)x, real_input);
-  if (ret != 0) {
+  if (ret != 0)
+  {
     return ret;
   }
   ret = parse_curve_point((void *)y, real_input + 64);
-  if (ret != 0) {
+  if (ret != 0)
+  {
     return ret;
   }
   bn128::alt_bn128_add(x, y, res);
 
   *output = (uint8_t *)malloc(64);
-  if (*output == NULL) {
+  if (*output == NULL)
+  {
     return FATAL_PRECOMPILED_CONTRACTS;
   }
   *output_size = 64;
@@ -815,20 +908,22 @@ int bn256_add_istanbul(gw_context_t* ctx,
 }
 
 /* bn256ScalarMulIstanbul */
-int bn256_scalar_mul_istanbul_gas(const uint8_t* input_src,
+int bn256_scalar_mul_istanbul_gas(const uint8_t *input_src,
                                   const size_t input_size,
-                                  uint64_t* gas) {
+                                  uint64_t *gas)
+{
   *gas = BN256_SCALAR_MUL_GAS_ISTANBUL;
   return 0;
 }
 
-int bn256_scalar_mul_istanbul(gw_context_t* ctx,
-                              const uint8_t* code_data,
+int bn256_scalar_mul_istanbul(gw_context_t *ctx,
+                              const uint8_t *code_data,
                               const size_t code_size,
                               bool is_static_call,
-                              const uint8_t* input_src,
+                              const uint8_t *input_src,
                               const size_t input_size,
-                              uint8_t** output, size_t* output_size) {
+                              uint8_t **output, size_t *output_size)
+{
   int ret;
   uint8_t real_input[96] = {0};
   size_t real_size = input_size > 96 ? 96 : input_size;
@@ -837,14 +932,16 @@ int bn256_scalar_mul_istanbul(gw_context_t* ctx,
 
   memcpy(real_input, input_src, real_size);
   ret = parse_curve_point((void *)x, real_input);
-  if (ret != 0) {
+  if (ret != 0)
+  {
     return ret;
   }
   intx::uint256 n = intx::be::unsafe::load<intx::uint256>(real_input + 64);
   bn128::alt_bn128_mul(x, n, res);
 
   *output = (uint8_t *)malloc(64);
-  if (*output == NULL) {
+  if (*output == NULL)
+  {
     return FATAL_PRECOMPILED_CONTRACTS;
   }
   *output_size = 64;
@@ -854,23 +951,25 @@ int bn256_scalar_mul_istanbul(gw_context_t* ctx,
 }
 
 /* bn256PairingIstanbul */
-int bn256_pairing_istanbul_gas(const uint8_t* input_src,
+int bn256_pairing_istanbul_gas(const uint8_t *input_src,
                                const size_t input_size,
-                               uint64_t* gas) {
-  *gas = BN256_PAIRING_BASE_GAS_ISTANBUL
-    + ((uint64_t)input_size / 192 * BN256_PAIRING_PERPOINT_GAS_ISTANBUL);
+                               uint64_t *gas)
+{
+  *gas = BN256_PAIRING_BASE_GAS_ISTANBUL + ((uint64_t)input_size / 192 * BN256_PAIRING_PERPOINT_GAS_ISTANBUL);
   return 0;
 }
 
 /* FIXME: Pairing is not supported due to it's high cycle cost. */
-int bn256_pairing_istanbul(gw_context_t* ctx,
-                           const uint8_t* code_data,
+int bn256_pairing_istanbul(gw_context_t *ctx,
+                           const uint8_t *code_data,
                            const size_t code_size,
                            bool is_static_call,
-                           const uint8_t* input_src,
+                           const uint8_t *input_src,
                            const size_t input_size,
-                           uint8_t** output, size_t* output_size) {
-  if (input_size % 192 > 0) {
+                           uint8_t **output, size_t *output_size)
+{
+  if (input_size % 192 > 0)
+  {
     return ERROR_BN256_PAIRING;
   }
 
@@ -878,21 +977,26 @@ int bn256_pairing_istanbul(gw_context_t* ctx,
   size_t length = input_size / 192;
   /* G1[] */
   intx::uint256 *cs = (intx::uint256 *)malloc(length * 4 * sizeof(intx::uint256));
-  if (cs == NULL) {
+  if (cs == NULL)
+  {
     return FATAL_PRECOMPILED_CONTRACTS;
   }
   /* G2[] */
   intx::uint256 *ts = (intx::uint256 *)malloc(length * 4 * sizeof(intx::uint256));
-  if (ts == NULL) {
+  if (ts == NULL)
+  {
     return FATAL_PRECOMPILED_CONTRACTS;
   }
-  for (size_t i = 0; i < input_size; i += 192) {
+  for (size_t i = 0; i < input_size; i += 192)
+  {
     ret = parse_curve_point((void *)(cs + i / 192 * 4), (uint8_t *)input_src + i);
-    if (ret != 0) {
+    if (ret != 0)
+    {
       return ret;
     }
     ret = parse_twist_point((void *)(ts + i / 192 * 4), (uint8_t *)input_src + i + 64);
-    if (ret != 0) {
+    if (ret != 0)
+    {
       return ret;
     }
   }
@@ -900,17 +1004,121 @@ int bn256_pairing_istanbul(gw_context_t* ctx,
   return ERROR_BN256_PAIRING;
 }
 
+/*
+  rsa signature validate
+*/
+int get_rsa_info(uint32_t pubkey_e, const uint8_t *pubkey_n, size_t pubkey_n_size, uint8_t md_type,
+                 const uint8_t *signature_buffer, size_t signature_size,
+                 uint8_t **output, size_t *output_size)
+{
+  if (pubkey_n_size != signature_size)
+  {
+    return ERROR_RSA_INVALID_LENGTH;
+  }
 
-bool match_precompiled_address(const evmc_address* destination,
-                               precompiled_contract_gas_fn* contract_gas,
-                               precompiled_contract_fn* contract) {
-  for (int i = 0; i < 19; i++) {
-    if (destination->bytes[i] != 0) {
+  if (md_type != CKB_MD_NONE && md_type != CKB_MD_SHA256)
+  {
+    return ERROR_RSA_INVALID_MD_TYPE;
+  }
+  uint32_t pubkey_size = (uint32_t)pubkey_n_size * 8;
+
+  *output_size = 8 + pubkey_n_size * 2;
+  *output = (uint8_t *)malloc(*output_size);
+
+  *output[0] = CKB_VERIFY_RSA;
+  *output[1] = uint8_t(pubkey_size / 1024);
+  *output[2] = CKB_PKCS_15;
+  *output[3] = md_type;
+
+  memcpy(*output + 4, (uint8_t *)(&pubkey_n_size), sizeof(pubkey_n_size));
+  memcpy(*output + 8, pubkey_n, pubkey_n_size);
+  memcpy(*output + 8 + pubkey_n_size, signature_buffer, signature_size);
+
+  return 0;
+}
+int internel_rsa_validate_signature(uint32_t pubkey_e, const uint8_t *pubkey_n, size_t pubkey_n_size, uint8_t md_type,
+                                    const uint8_t *msg_buf, size_t msg_size,
+                                    const uint8_t *signature_buffer, size_t signature_size)
+{
+  int ret = 0;
+
+  uint8_t *rsa_info;
+  size_t rsa_info_size;
+  ret = get_rsa_info(pubkey_e, pubkey_n, pubkey_n_size, md_type,
+                     signature_buffer, signature_size,
+                     &rsa_info, &rsa_info_size);
+  if (ret != 0)
+  {
+    return ret;
+  }
+
+  return validate_signature(NULL, rsa_info, rsa_info_size, msg_buf, msg_size, NULL, NULL);
+}
+/*
+ * ecrecover() is a useful Solidity function.
+
+  ===============
+    input[0..4]                                                                     => pubkey e
+    input[4..8]                                                                     => pubkey n size
+    input[8..8 + pubkey_n_size]                                                     => pubkey n
+    input[8 + pubkey_n_size..9 + pubkey_n_size]                                     => md type: 0 NONE, 4 SHA256
+    input[9 + pubkey_n_size..13 + pubkey_n_size ]                                   => message size
+    input[13 + pubkey_n_size..13 + pubkey_n_size + msg_size]                        => message
+    input[13 + pubkey_n_size + msg_size..17 + pubkey_n_size + msg_size]             => signature size
+    input[17 + pubkey_n_size + msg_size..17 + pubkey_n_size + msg_size + sig_size]  => signature
+ */
+int rsa_validate_signature(gw_context_t *ctx,
+                           const uint8_t *code_data,
+                           const size_t code_size,
+                           bool is_static_call,
+                           const uint8_t *input_src,
+                           const size_t input_size,
+                           uint8_t **output, size_t *output_size)
+{
+  uint32_t *pubkey_e = (uint32_t *)(input_src);
+  uint32_t *pubkey_n_size = (uint32_t *)(input_src + 4);
+  const uint8_t *pubkey_n = input_src + 8;
+  const uint8_t *md_type = input_src + 8 + *pubkey_n_size;
+  uint32_t *msg_size = (uint32_t *)(input_src + 9 + *pubkey_n_size);
+  const uint8_t *msg = input_src + 13 + *pubkey_n_size;
+  uint32_t *sig_size = (uint32_t *)(input_src + 13 + *pubkey_n_size + *msg_size);
+  const uint8_t *sig = input_src + 17 + *pubkey_n_size + *msg_size;
+
+  int res = internel_rsa_validate_signature(*pubkey_e, pubkey_n, size_t(*pubkey_n_size),
+                                            *md_type, msg, size_t(*msg_size),
+                                            sig, size_t(*sig_size));
+  // char *buffer = (char *)malloc(500);
+  // sprintf(buffer, "rsa validate res: %d", res);
+  // ckb_debug(buffer);
+  *output_size = 4;
+  *output = (uint8_t *)malloc(4);
+  memcpy(*output, (uint8_t *)(&res), 4);
+
+  return 0;
+}
+
+int rsa_validate_gas(const uint8_t *input_src,
+                     const size_t input_size,
+                     uint64_t *gas)
+{
+  *gas = 3000;
+  return 0;
+}
+
+bool match_precompiled_address(const evmc_address *destination,
+                               precompiled_contract_gas_fn *contract_gas,
+                               precompiled_contract_fn *contract)
+{
+  for (int i = 0; i < 19; i++)
+  {
+    if (destination->bytes[i] != 0)
+    {
       return false;
     }
   }
 
-  switch (destination->bytes[19]) {
+  switch (destination->bytes[19])
+  {
   case 1:
     *contract_gas = ecrecover_required_gas;
     *contract = ecrecover;
@@ -963,6 +1171,10 @@ bool match_precompiled_address(const evmc_address* destination,
     *contract_gas = eth_to_godwoken_addr_gas;
     *contract = eth_to_godwoken_addr;
     break;
+  case 0xf4:
+    *contract_gas = rsa_validate_gas;
+    *contract = rsa_validate_signature;
+    break;
   default:
     *contract_gas = NULL;
     *contract = NULL;
@@ -971,4 +1183,4 @@ bool match_precompiled_address(const evmc_address* destination,
   return true;
 }
 
-#endif  /* #define CONTRACTS_H_ */
+#endif /* #define CONTRACTS_H_ */

@@ -18,5 +18,7 @@
 #define ERROR_TRANSFER_TO_ANY_SUDT         -88
 #define ERROR_RECOVER_ACCOUNT              -89
 #define ERROR_ETH_TO_GODWOKEN_ADDR         -90
+#define ERROR_RSA_INVALID_LENGTH           -91
+#define ERROR_RSA_INVALID_MD_TYPE          -92
 
 #endif // POLYJUICE_ERRORS_H

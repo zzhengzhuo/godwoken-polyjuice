@@ -21,6 +21,8 @@ CFLAGS_SMT := -Ideps/godwoken-scripts/c/deps/sparse-merkle-tree/c
 CFLAGS_GODWOKEN := -Ideps/godwoken-scripts/c
 CFLAGS := -O3 -Ic/ripemd160 $(CFLAGS_CKB_STD) $(CFLAGS_EVMONE) $(CFLAGS_INTX) $(CFLAGS_BN128) $(CFLAGS_ETHASH) $(CFLAGS_CRYPTO_ALGORITHMS) $(CFLAGS_MBEDTLS) $(CFLAGS_SMT) $(CFLAGS_GODWOKEN) $(CFLAGS_SECP)
 CXXFLAGS := $(CFLAGS) -std=c++1z
+PASSED_MBEDTLS_CFLAGS := -O3 -fPIC -nostdinc -nostdlib -DCKB_DECLARATION_ONLY -I../../ckb-c-stdlib-20210413/libc -fdata-sections -ffunction-sections
+
 # -Wl,<args> Pass the comma separated arguments in args to the linker(GNU linker)
 # --gc-sections
 #   This will perform a garbage collection of code and data never referenced.
@@ -40,7 +42,9 @@ PROTOCOL_SCHEMA_URL := https://raw.githubusercontent.com/nervosnetwork/godwoken/
 
 ALL_OBJS := build/execution_state.o build/baseline.o build/analysis.o build/instruction_metrics.o build/instruction_names.o build/execution.o build/instructions.o build/instructions_calls.o build/evmone.o \
   build/keccak.o build/keccakf800.o \
-  build/sha256.o build/memzero.o build/ripemd160.o build/bignum.o build/platform_util.o
+  build/sha256.o build/memzero.o build/ripemd160.o build/bignum.o build/platform_util.o \
+  build/rsa.o build/platform.o build/md.o build/memory_buffer_alloc.o build/rsa_internal.o build/mbedtls_sha512.o build/mbedtls_sha256.o build/mbedtls_sha1.o build/mbedtls_ripemd160.o \
+  build/oid.o build/md5.o
 BIN_DEPS := c/contracts.h c/sudt_contracts.h c/other_contracts.h c/polyjuice.h c/polyjuice_utils.h build/secp256k1_data_info.h $(ALL_OBJS)
 GENERATOR_DEPS := c/generator/secp256k1_helper.h $(BIN_DEPS)
 VALIDATOR_DEPS := c/validator/secp256k1_helper.h $(BIN_DEPS)
@@ -172,6 +176,34 @@ build/platform_util.o: deps/mbedtls/library/platform_util.c
 	$(CC) $(CFLAGS) $(LDFLAGS) -c -o $@ $<
 build/bignum.o: deps/mbedtls/library/bignum.c
 	$(CC) $(CFLAGS) $(LDFLAGS) -c -o $@ $<
+build/platform.o: deps/mbedtls/library/platform.c
+	$(CC) $(CFLAGS) $(LDFLAGS) -c -o $@ $<
+build/rsa.o: deps/mbedtls/library/rsa.c
+	$(CC) $(CFLAGS) $(LDFLAGS) -c -o $@ $<
+build/md.o: deps/mbedtls/library/md.c
+	$(CC) $(CFLAGS) $(LDFLAGS) -c -o $@ $<
+build/memory_buffer_alloc.o: deps/mbedtls/library/memory_buffer_alloc.c
+	$(CC) $(CFLAGS) $(LDFLAGS) -c -o $@ $<
+build/rsa_internal.o: deps/mbedtls/library/rsa_internal.c
+	$(CC) $(CFLAGS) $(LDFLAGS) -c -o $@ $<
+build/mbedtls_sha512.o: deps/mbedtls/library/sha512.c
+	$(CC) $(CFLAGS) $(LDFLAGS) -c -o $@ $<
+build/mbedtls_sha256.o: deps/mbedtls/library/sha256.c
+	$(CC) $(CFLAGS) $(LDFLAGS) -c -o $@ $<
+build/mbedtls_sha1.o: deps/mbedtls/library/sha1.c
+	$(CC) $(CFLAGS) $(LDFLAGS) -c -o $@ $<
+build/mbedtls_ripemd160.o: deps/mbedtls/library/ripemd160.c
+	$(CC) $(CFLAGS) $(LDFLAGS) -c -o $@ $<	
+build/oid.o: deps/mbedtls/library/oid.c
+	$(CC) $(CFLAGS) $(LDFLAGS) -c -o $@ $<	
+build/md5.o: deps/mbedtls/library/md5.c
+	$(CC) $(CFLAGS) $(LDFLAGS) -c -o $@ $<	
+
+build/libmbedcrypto.a:
+	cp deps/mbedtls-config-template.h deps/mbedtls/include/mbedtls/config.h
+	make -C deps/mbedtls/library
+	make -C deps/mbedtls/library CC=${CC} LD=${LD} CFLAGS="${PASSED_MBEDTLS_CFLAGS}" libmbedcrypto.a
+	mv deps/mbedtls/library/libmbedcrypto.a build/libmbedcrypto.a
 
 build/sha256.o: deps/crypto-algorithms/sha256.c
 	$(CXX) $(CFLAGS) $(LDFLAGS) -c -o $@ $<

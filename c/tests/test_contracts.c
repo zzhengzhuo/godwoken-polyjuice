@@ -58,8 +58,10 @@ int test_contract(const uint8_t n,
   hex2bin(input_hex, &input_src, &input_size);
 
   uint64_t gas = 0;
-  if (contract_gas(input_src, input_size, &gas) != 0) {
+  int gas_ret = contract_gas(input_src, input_size, &gas);
+  if (gas_ret != 0) {
     ckb_debug("calculate gas failed");
+    debug_print_int("gas ret", gas_ret);
     ret = -1;
     goto test_contract_cleanup;
   }
