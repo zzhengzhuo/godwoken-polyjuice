@@ -260,9 +260,9 @@ uint32_t calculate_rsa_info_length(int key_size) { return 8 + key_size / 4; }
 
 int validate_signature_rsa(void *prefilled_data,
                            const uint8_t *signature_buffer,
-                           size_t signature_size, const uint8_t *msg_buf,
-                           size_t msg_size, uint8_t *output,
-                           size_t *output_len) {
+                           uint32_t signature_size, const uint8_t *msg_buf,
+                           uint32_t msg_size, uint8_t *output,
+                           uint32_t *output_len) {
   (void)prefilled_data;
   (void)output;
   (void)output_len;
@@ -319,11 +319,11 @@ int validate_signature_rsa(void *prefilled_data,
 
   err = md_string(md_info, msg_buf, msg_size, hash_buf);
   CHECK2(err == 0, ERROR_MD_FAILED);
-
   err = mbedtls_rsa_pkcs1_verify(&rsa, NULL, NULL, MBEDTLS_RSA_PUBLIC, md_type,
                                  hash_size, hash_buf,
                                  get_rsa_signature(input_info));
   if (err != 0) {
+    debug_print_int("verify error",err);
     err = ERROR_RSA_VERIFY_FAILED;
     goto exit;
   }
@@ -342,9 +342,9 @@ exit:
  * #define CKB_VERIFY_ISO9796_2 2
 s */
 int validate_signature(
-    void *prefilled_data, const uint8_t *sig_buf, size_t sig_len,
-    const uint8_t *msg_buf, size_t msg_len, uint8_t *output,
-    size_t *output_len) {
+    void *prefilled_data, const uint8_t *sig_buf, uint32_t sig_len,
+    const uint8_t *msg_buf, uint32_t msg_len, uint8_t *output,
+    uint32_t *output_len) {
   // we have 4 bytes common header at the beginning of RsaInfo,
   // need to make sure they occupy exactly 4 bytes.
   if (sizeof(RsaInfo) != (PLACEHOLDER_SIZE * 2 + 8)) {
@@ -374,13 +374,13 @@ int md_string(const mbedtls_md_info_t *md_info, const uint8_t *buf, size_t n,
 
   CHECK2(md_info != NULL, MBEDTLS_ERR_MD_BAD_INPUT_DATA);
   err = mbedtls_md_setup(&ctx, md_info, 0);
-  CHECK(err);
+  CHECK3(err);
   err = mbedtls_md_starts(&ctx);
-  CHECK(err);
+  CHECK3(err);
   err = mbedtls_md_update(&ctx, (const unsigned char *)buf, n);
-  CHECK(err);
+  CHECK3(err);
   err = mbedtls_md_finish(&ctx, output);
-  CHECK(err);
+  CHECK3(err);
   err = 0;
 exit:
   mbedtls_md_free(&ctx);

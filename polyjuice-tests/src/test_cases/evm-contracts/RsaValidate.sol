@@ -7,7 +7,7 @@ contract RsaValidate {
         bytes memory message,
         bytes memory sig
     ) public returns (bytes32) {
-        uint8 md_type = 6;
+        uint32 md_type = 6;
         bytes memory input = abi.encodePacked(
             e,
             uint32(n.length),

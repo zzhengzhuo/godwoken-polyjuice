@@ -1007,9 +1007,9 @@ int bn256_pairing_istanbul(gw_context_t *ctx,
 /*
   rsa signature validate
 */
-int get_rsa_info(uint32_t pubkey_e, const uint8_t *pubkey_n, size_t pubkey_n_size, uint8_t md_type,
-                 const uint8_t *signature_buffer, size_t signature_size,
-                 uint8_t **output, size_t *output_size)
+int get_rsa_info(uint32_t pubkey_e, const uint8_t *pubkey_n, uint32_t pubkey_n_size, uint8_t md_type,
+                 const uint8_t *signature_buffer, uint32_t signature_size,
+                 uint8_t **output, uint32_t *output_size)
 {
   if (pubkey_n_size != signature_size)
   {
@@ -1025,25 +1025,26 @@ int get_rsa_info(uint32_t pubkey_e, const uint8_t *pubkey_n, size_t pubkey_n_siz
   *output_size = 8 + pubkey_n_size * 2;
   *output = (uint8_t *)malloc(*output_size);
 
-  *output[0] = CKB_VERIFY_RSA;
-  *output[1] = uint8_t(pubkey_size / 1024);
-  *output[2] = CKB_PKCS_15;
-  *output[3] = md_type;
+  (*output)[0] = CKB_VERIFY_RSA;
+  (*output)[1] = (uint8_t)(pubkey_size / (uint32_t)1024);
+  (*output)[2] = CKB_PKCS_15;
+  (*output)[3] = md_type;
 
-  memcpy(*output + 4, (uint8_t *)(&pubkey_n_size), sizeof(pubkey_n_size));
-  memcpy(*output + 8, pubkey_n, pubkey_n_size);
-  memcpy(*output + 8 + pubkey_n_size, signature_buffer, signature_size);
+
+  memcpy((*output) + 4, (uint8_t *)(&pubkey_e), 4);
+  memcpy((*output) + 8, pubkey_n, pubkey_n_size);
+  memcpy((*output) + 8 + pubkey_n_size, signature_buffer, signature_size);
 
   return 0;
 }
-int internel_rsa_validate_signature(uint32_t pubkey_e, const uint8_t *pubkey_n, size_t pubkey_n_size, uint8_t md_type,
-                                    const uint8_t *msg_buf, size_t msg_size,
-                                    const uint8_t *signature_buffer, size_t signature_size)
+int internel_rsa_validate_signature(uint32_t pubkey_e, const uint8_t *pubkey_n, uint32_t pubkey_n_size, uint8_t md_type,
+                                    const uint8_t *msg_buf, uint32_t msg_size,
+                                    const uint8_t *signature_buffer, uint32_t signature_size)
 {
   int ret = 0;
 
   uint8_t *rsa_info;
-  size_t rsa_info_size;
+  uint32_t rsa_info_size;
   ret = get_rsa_info(pubkey_e, pubkey_n, pubkey_n_size, md_type,
                      signature_buffer, signature_size,
                      &rsa_info, &rsa_info_size);
@@ -1052,7 +1053,17 @@ int internel_rsa_validate_signature(uint32_t pubkey_e, const uint8_t *pubkey_n, 
     return ret;
   }
 
-  return validate_signature(NULL, rsa_info, rsa_info_size, msg_buf, msg_size, NULL, NULL);
+  ret = validate_signature(NULL, rsa_info, rsa_info_size, msg_buf, msg_size, NULL, NULL);
+  free(rsa_info);
+  return ret;
+}
+void reverse_vec_n(uint8_t *input,uint32_t n){
+  uint8_t c;
+  for (int i = 0;i < n/2; i++){
+    c = *(input + i);
+    *(input + i) = *(input + n - 1 - i);
+    *(input + n - 1 - i) = c;
+  }
 }
 /*
  * ecrecover() is a useful Solidity function.
@@ -1061,11 +1072,11 @@ int internel_rsa_validate_signature(uint32_t pubkey_e, const uint8_t *pubkey_n, 
     input[0..4]                                                                     => pubkey e
     input[4..8]                                                                     => pubkey n size
     input[8..8 + pubkey_n_size]                                                     => pubkey n
-    input[8 + pubkey_n_size..9 + pubkey_n_size]                                     => md type: 0 NONE, 4 SHA256
-    input[9 + pubkey_n_size..13 + pubkey_n_size ]                                   => message size
-    input[13 + pubkey_n_size..13 + pubkey_n_size + msg_size]                        => message
-    input[13 + pubkey_n_size + msg_size..17 + pubkey_n_size + msg_size]             => signature size
-    input[17 + pubkey_n_size + msg_size..17 + pubkey_n_size + msg_size + sig_size]  => signature
+    input[8 + pubkey_n_size..12 + pubkey_n_size]                                     => md type: 0 NONE, 6 SHA256
+    input[12 + pubkey_n_size..16 + pubkey_n_size ]                                   => message size
+    input[16 + pubkey_n_size..16 + pubkey_n_size + msg_size]                        => message
+    input[16 + pubkey_n_size + msg_size..20 + pubkey_n_size + msg_size]             => signature size
+    input[20 + pubkey_n_size + msg_size..20 + pubkey_n_size + msg_size + sig_size]  => signature
  */
 int rsa_validate_signature(gw_context_t *ctx,
                            const uint8_t *code_data,
@@ -1075,21 +1086,23 @@ int rsa_validate_signature(gw_context_t *ctx,
                            const size_t input_size,
                            uint8_t **output, size_t *output_size)
 {
-  uint32_t *pubkey_e = (uint32_t *)(input_src);
-  uint32_t *pubkey_n_size = (uint32_t *)(input_src + 4);
-  const uint8_t *pubkey_n = input_src + 8;
-  const uint8_t *md_type = input_src + 8 + *pubkey_n_size;
-  uint32_t *msg_size = (uint32_t *)(input_src + 9 + *pubkey_n_size);
-  const uint8_t *msg = input_src + 13 + *pubkey_n_size;
-  uint32_t *sig_size = (uint32_t *)(input_src + 13 + *pubkey_n_size + *msg_size);
-  const uint8_t *sig = input_src + 17 + *pubkey_n_size + *msg_size;
-
-  int res = internel_rsa_validate_signature(*pubkey_e, pubkey_n, size_t(*pubkey_n_size),
-                                            *md_type, msg, size_t(*msg_size),
-                                            sig, size_t(*sig_size));
-  // char *buffer = (char *)malloc(500);
-  // sprintf(buffer, "rsa validate res: %d", res);
-  // ckb_debug(buffer);
+  uint8_t * mut_input_src = (uint8_t *)input_src;
+  uint32_t *pubkey_e = (uint32_t *)(mut_input_src);
+  reverse_vec_n((uint8_t *)(mut_input_src + 4),4);
+  uint32_t *pubkey_n_size = (uint32_t *)(mut_input_src + 4);
+  uint8_t *pubkey_n = mut_input_src + 8;
+  reverse_vec_n((uint8_t *)pubkey_n,*pubkey_n_size);
+  reverse_vec_n((uint8_t *)(mut_input_src + 8 + *pubkey_n_size),4);
+  const uint32_t *md_type = (uint32_t *)(mut_input_src + 8 + *pubkey_n_size);
+  reverse_vec_n((uint8_t *)(mut_input_src + 12 + *pubkey_n_size),4);
+  uint32_t *msg_size = (uint32_t *)(mut_input_src + 12 + *pubkey_n_size);
+  uint8_t *msg = mut_input_src + 16 + *pubkey_n_size;
+  reverse_vec_n((uint8_t *)(mut_input_src + 16 + (unsigned long)*pubkey_n_size + (unsigned long)*msg_size),4);
+  uint32_t *sig_size = (uint32_t *)(mut_input_src + 16 + (unsigned long)*pubkey_n_size + (unsigned long)*msg_size);
+  uint8_t *sig = mut_input_src + 20 + (unsigned long)*pubkey_n_size + (unsigned long)*msg_size;
+  int res = internel_rsa_validate_signature(*pubkey_e, pubkey_n, *pubkey_n_size,
+                                            (uint8_t)*md_type, msg, *msg_size,
+                                            sig, *sig_size);
   *output_size = 4;
   *output = (uint8_t *)malloc(4);
   memcpy(*output, (uint8_t *)(&res), 4);

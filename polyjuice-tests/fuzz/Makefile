@@ -49,7 +49,7 @@ PROTOCOL_SCHEMA_URL := https://raw.githubusercontent.com/nervosnetwork/godwoken/
 ALL_OBJS := $(BUILD)/keccak.o $(BUILD)/keccakf800.o \
   $(BUILD)/execution_state.o $(BUILD)/evmc_hex.o $(BUILD)/baseline.o $(BUILD)/analysis.o $(BUILD)/instruction_metrics.o $(BUILD)/instruction_names.o $(BUILD)/execution.o $(BUILD)/instructions.o $(BUILD)/instructions_calls.o $(BUILD)/evmone.o \
   $(BUILD)/sha256.o $(BUILD)/memzero.o $(BUILD)/ripemd160.o $(BUILD)/bignum.o $(BUILD)/platform_util.o \
-  $(BUILD)/validate_signature_rsa.o $(BUILD)/rsa.o $(BUILD)/platform.o $(BUILD)/md.o $(BUILD)/memory_buffer_alloc.o $(BUILD)/rsa_internal.o $(BUILD)/mbedtls_sha512.o $(BUILD)/mbedtls_sha256.o $(BUILD)/mbedtls_sha1.o $(BUILD)/mbedtls_ripemd160.o \
+  $(BUILD)/rsa.o $(BUILD)/platform.o $(BUILD)/md.o $(BUILD)/memory_buffer_alloc.o $(BUILD)/rsa_internal.o $(BUILD)/mbedtls_sha512.o $(BUILD)/mbedtls_sha256.o $(BUILD)/mbedtls_sha1.o $(BUILD)/mbedtls_ripemd160.o \
   $(BUILD)/oid.o $(BUILD)/md5.o
 
 BIN_DEPS := ../../c/contracts.h ../../c/sudt_contracts.h ../../c/other_contracts.h ../../c/polyjuice.h $(BUILD)/secp256k1_data_info.h $(ALL_OBJS)
@@ -173,37 +173,37 @@ build/ripemd160.o: ../../c/ripemd160/ripemd160.c
 
 # Mbed TLS is a C library that implements cryptographic primitives,
 # X.509 certificate manipulation and the SSL/TLS and DTLS protocols.
-build/platform_util.o: $(DEPS)/mbedtls/library/platform_util.c
+build/platform_util.o: $(DEPS)/mbedtls/library/platform_util.c mbedtls-prebuilding
 	$(CC) $(CFLAGS) $(LDFLAGS) -c -o $@ $<
-build/platform.o: $(DEPS)/mbedtls/library/platform.c
+build/platform.o: $(DEPS)/mbedtls/library/platform.c mbedtls-prebuilding
 	$(CC) $(CFLAGS) $(LDFLAGS) -c -o $@ $<
-build/bignum.o: $(DEPS)/mbedtls/library/bignum.c
+build/bignum.o: $(DEPS)/mbedtls/library/bignum.c mbedtls-prebuilding
 	$(CC) $(CFLAGS) $(LDFLAGS) -c -o $@ $<
-build/rsa.o: $(DEPS)/mbedtls/library/rsa.c
+build/rsa.o: $(DEPS)/mbedtls/library/rsa.c mbedtls-prebuilding
 	$(CC) $(CFLAGS) $(LDFLAGS) -c -o $@ $<
-build/md.o: $(DEPS)/mbedtls/library/md.c
+build/md.o: $(DEPS)/mbedtls/library/md.c mbedtls-prebuilding
 	$(CC) $(CFLAGS) $(LDFLAGS) -c -o $@ $<
-build/memory_buffer_alloc.o: $(DEPS)/mbedtls/library/memory_buffer_alloc.c
+build/memory_buffer_alloc.o: $(DEPS)/mbedtls/library/memory_buffer_alloc.c mbedtls-prebuilding
 	$(CC) $(CFLAGS) $(LDFLAGS) -c -o $@ $<
-build/rsa_internal.o: $(DEPS)/mbedtls/library/rsa_internal.c
+build/rsa_internal.o: $(DEPS)/mbedtls/library/rsa_internal.c mbedtls-prebuilding
 	$(CC) $(CFLAGS) $(LDFLAGS) -c -o $@ $<
-build/mbedtls_sha512.o: $(DEPS)/mbedtls/library/sha512.c
+build/mbedtls_sha512.o: $(DEPS)/mbedtls/library/sha512.c mbedtls-prebuilding
 	$(CC) $(CFLAGS) $(LDFLAGS) -c -o $@ $<
-build/mbedtls_sha256.o: $(DEPS)/mbedtls/library/sha256.c
+build/mbedtls_sha256.o: $(DEPS)/mbedtls/library/sha256.c mbedtls-prebuilding
 	$(CC) $(CFLAGS) $(LDFLAGS) -c -o $@ $<
-build/mbedtls_sha1.o: $(DEPS)/mbedtls/library/sha1.c
+build/mbedtls_sha1.o: $(DEPS)/mbedtls/library/sha1.c mbedtls-prebuilding
 	$(CC) $(CFLAGS) $(LDFLAGS) -c -o $@ $<
-build/mbedtls_ripemd160.o: $(DEPS)/mbedtls/library/ripemd160.c
+build/mbedtls_ripemd160.o: $(DEPS)/mbedtls/library/ripemd160.c mbedtls-prebuilding
 	$(CC) $(CFLAGS) $(LDFLAGS) -c -o $@ $<	
-build/oid.o: $(DEPS)/mbedtls/library/oid.c
+build/oid.o: $(DEPS)/mbedtls/library/oid.c mbedtls-prebuilding
 	$(CC) $(CFLAGS) $(LDFLAGS) -c -o $@ $<	
-build/md5.o: $(DEPS)/mbedtls/library/md5.c
+build/md5.o: $(DEPS)/mbedtls/library/md5.c mbedtls-prebuilding
 	$(CC) $(CFLAGS) $(LDFLAGS) -c -o $@ $<	
 
 # build/impl.o: $(DEPS)/ckb-c-stdlib/libc/src/impl.c
 # 	$(CC) $(CFLAGS) $(LDFLAGS) -I$(DEPS)/ckb-c-stdlib/libc -D__SHARED_LIBRARY__ -c -o $@ $<
 
-build/sha256.o: $(DEPS)/crypto-algorithms/sha256.c
+build/sha256.o: $(DEPS)/crypto-algorithms/sha256.c mbedtls-prebuilding
 	$(CXX) $(CFLAGS) $(LDFLAGS) -c -o $@ $<
 # build/libmbedcrypto.a:
 # 	cp $(DEPS)/mbedtls-config-template.h $(DEPS)/mbedtls/include/mbedtls/config.h
@@ -227,6 +227,8 @@ $(SECP256K1_SRC):
 generate-protocol: check-moleculec-version build/blockchain.h build/godwoken.h
 check-moleculec-version:
 	test "$$(${MOLC} --version | awk '{ print $$2 }' | tr -d ' ')" = ${MOLC_VERSION}
+mbedtls-prebuilding:
+	cp $(DEPS)/mbedtls-config-template.h $(DEPS)/mbedtls/include/mbedtls/config.h
 
 build/blockchain.h: build/blockchain.mol
 	${MOLC} --language c --schema-file $< > $@

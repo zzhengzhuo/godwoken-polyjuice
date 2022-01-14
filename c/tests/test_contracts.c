@@ -623,6 +623,25 @@ int test_blake2f() {
   return 0;
 }
 
+int test_rsa_validate() {
+  if (test_contract(0xf4,
+                    "0100010000000080c067e6850c2f445363c381135146c9ecc98e8c508e67ed528b7c5d024fdf626b19cc274527d9535475026e14d204645759ff7e1ca428839f1c56c5f6680c32c96ad6db687fdba8bf80742588cd07c64920f61009d02fecab610d6fd0d6c48352ac1a8c920b2525605066f334d8d21066bd252e1bb3a5abe7957129bd4c43d10f000000060000000c68656c6c6f2c20776f726c64000000807acb5e5e1555ea4ffc4b1d1bf16e603b19b810051f9718c6f4eb11b6bf426579467bf932683f0e7c5953aaa1ea558edbf7c587454f7cf8b407be2b20864f07d889448b77a7a1323ee8293f4413c44f6bdb3e2b518f71daff7abc4c7cf685a6e71ce09cdd9a408dec5f6f0657191786317325b433fabcc135ee3ed52e6ea9b715",
+                    "00000000",
+                    3000,
+                    "rsa validate success") != 0) {
+    return -1;
+  }
+  /* error cases */
+  if (test_contract(0xf4,
+                    "0100010000000080c067e6850c2f445363c381135146c9ecc98e8c508e67ed528b7c5d024fdf626b19cc274527d9535475026e14d204645759ff7e1ca428839f1c56c5f6680c32c96ad6db687fdba8bf80742588cd07c64920f61009d02fecab610d6fd0d6c48352ac1a8c920b2525605066f334d8d21066bd252e1bb3a5abe7957129bd4c43d10f000000060000000c68656c6c6f2c20776f726c64000000807acb5e5e1555ea4ffc4b1d1bf16e603b19b810051f9718c6f4eb11b6bf426579467bf932683f0e7c5953aaa1ea558edbf7c587454f7cf8b407be2b20864f07d889448b77a7a1323ee8293f4413c44f6bdb3e2b518f71daff7abc4c7cf685a6e71ce09cdd9a408dec5f6f0657191786317325b433fabcc135ee3ed52e6ea9b716",
+                    "2a000000",
+                    3000,
+                    "invalid signature") != 0) {
+    return -1;
+  }
+  return 0;
+}
+
 #ifdef FUZZING
 int init_mock_state() {
   ckb_debug("[init_mock_state] init SECP");
@@ -679,6 +698,9 @@ int main() {
   }
   if (test_blake2f() != 0) {
     return -9;
+  }
+  if (test_rsa_validate() != 0){
+    return -0xf4;
   }
   return 0;
 }
