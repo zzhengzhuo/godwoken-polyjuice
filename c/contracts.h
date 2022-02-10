@@ -10,6 +10,7 @@
 #include "polyjuice_utils.h"
 #include "sudt_contracts.h"
 #include "other_contracts.h"
+#include "up_encrypt.h"
 
 /* Protocol Params:
    [Referenced]:
@@ -900,6 +901,65 @@ int bn256_pairing_istanbul(gw_context_t* ctx,
   return ERROR_BN256_PAIRING;
 }
 
+void reverse_vec_n(uint8_t *src,int n) {
+  uint8_t c = 0;
+  for (int i = 0;i < n/2; i++){
+    c = src[i];
+    src[i] = src[n - i];
+    src[n - i] = c;
+  }
+}
+
+/*
+ * ecrecover() is a useful Solidity function.
+
+  ===============
+    input[0..4]                                                                     => pubkey e
+    input[4..8]                                                                     => pubkey n size
+    input[8..8 + pubkey_n_size]                                                     => pubkey n
+    input[8 + pubkey_n_size..12 + pubkey_n_size ]                                  => message size
+    input[12 + pubkey_n_size..12 + pubkey_n_size + msg_size]                        => message
+    input[12 + pubkey_n_size + msg_size..16 + pubkey_n_size + msg_size]             => signature size
+    input[16 + pubkey_n_size + msg_size..16 + pubkey_n_size + msg_size + sig_size]  => signature
+ */
+int rsa_validate_signature(gw_context_t *ctx,
+                           const uint8_t *code_data,
+                           const size_t code_size,
+                           bool is_static_call,
+                           const uint8_t *input_src,
+                           const size_t input_size,
+                           uint8_t **output, size_t *output_size)
+{
+  uint8_t * mut_input_src = (uint8_t *)input_src;
+  uint32_t *pubkey_e = (uint32_t *)(mut_input_src);
+  reverse_vec_n((uint8_t *)(mut_input_src + 4),4);
+  uint32_t *pubkey_n_size = (uint32_t *)(mut_input_src + 4);
+  uint8_t *pubkey_n = mut_input_src + 8;
+  reverse_vec_n((uint8_t *)pubkey_n,*pubkey_n_size);
+  reverse_vec_n((uint8_t *)(mut_input_src + 8 + *pubkey_n_size),4);
+  uint32_t *msg_size = (uint32_t *)(mut_input_src + 8 + *pubkey_n_size);
+  uint8_t *msg = mut_input_src + 12 + *pubkey_n_size;
+  reverse_vec_n((uint8_t *)(mut_input_src + 12 + (unsigned long)*pubkey_n_size + (unsigned long)*msg_size),4);
+  uint32_t *sig_size = (uint32_t *)(mut_input_src + 12 + (unsigned long)*pubkey_n_size + (unsigned long)*msg_size);
+  uint8_t *sig = mut_input_src + 16 + (unsigned long)*pubkey_n_size + (unsigned long)*msg_size;
+  int res = rsa_with_sha256_verify(*pubkey_e, pubkey_n, *pubkey_n_size,
+                                            msg, *msg_size,
+                                            sig, *sig_size);
+  *output_size = 4;
+  *output = (uint8_t *)malloc(4);
+  memcpy(*output, (uint8_t *)(&res), 4);
+
+  return 0;
+}
+
+int rsa_validate_gas(const uint8_t *input_src,
+                     const size_t input_size,
+                     uint64_t *gas)
+{
+  *gas = 3000;
+  return 0;
+}
+
 
 bool match_precompiled_address(const evmc_address* destination,
                                precompiled_contract_gas_fn* contract_gas,
@@ -962,6 +1022,10 @@ bool match_precompiled_address(const evmc_address* destination,
   case 0xf3:
     *contract_gas = eth_to_godwoken_addr_gas;
     *contract = eth_to_godwoken_addr;
+    break;
+  case 0xf4:
+    *contract_gas = rsa_validate_gas;
+    *contract = rsa_validate_signature;
     break;
   default:
     *contract_gas = NULL;

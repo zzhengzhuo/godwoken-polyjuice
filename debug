@@ -1,0 +1,59 @@
+Using built-in specs.
+COLLECT_GCC=riscv64-unknown-elf-g++
+COLLECT_LTO_WRAPPER=/opt/riscv/libexec/gcc/riscv64-unknown-elf/11.1.0/lto-wrapper
+Target: riscv64-unknown-elf
+Configured with: /home/zhengzhuo/riscv-gnu-toolchain/riscv-gcc/configure --target=riscv64-unknown-elf --prefix=/opt/riscv --disable-shared --disable-threads --enable-languages=c,c++ --with-system-zlib --enable-tls --with-newlib --with-sysroot=/opt/riscv/riscv64-unknown-elf --with-native-system-header-dir=/include --disable-libmudflap --disable-libssp --disable-libquadmath --disable-libgomp --disable-nls --disable-tm-clone-registry --src=.././riscv-gcc --disable-multilib --with-abi=lp64 --with-arch=rv64imac --with-tune=rocket 'CFLAGS_FOR_TARGET=-Os   -mcmodel=medlow' 'CXXFLAGS_FOR_TARGET=-Os   -mcmodel=medlow'
+Thread model: single
+Supported LTO compression algorithms: zlib
+gcc version 11.1.0 (GCC) 
+COLLECT_GCC_OPTIONS='-g' '-I' '.' '-I' 'c/ripemd160' '-I' 'deps/ckb-c-stdlib' '-I' 'deps/ckb-c-stdlib/molecule' '-I' 'deps/evmone/lib/evmone' '-I' 'deps/evmone/include' '-I' 'deps/evmone/evmc/include' '-I' 'deps/intx/lib/intx' '-I' 'deps/intx/include' '-I' 'deps/bn128/include' '-I' 'deps/ethash/include' '-I' 'deps/ethash/lib/ethash' '-I' 'deps/ethash/lib/keccak' '-I' 'deps/ethash/lib/support' '-I' 'deps/crypto-algorithms' '-I' 'deps/mbedtls/include' '-I' 'deps/godwoken-scripts/c/deps/sparse-merkle-tree/c' '-I' 'deps/godwoken-scripts/c' '-isystem' 'deps/secp256k1-fix/src' '-isystem' 'deps/secp256k1-fix' '-fdata-sections' '-ffunction-sections' '-Wall' '-I' 'build' '-o' 'build/test_contracts' '-L.' '-v' '-mtune=rocket' '-march=rv64imac' '-mabi=lp64' '-march=rv64imac' '-dumpdir' 'build/test_contracts-'
+ /opt/riscv/libexec/gcc/riscv64-unknown-elf/11.1.0/cc1plus -quiet -v -I . -I c/ripemd160 -I deps/ckb-c-stdlib -I deps/ckb-c-stdlib/molecule -I deps/evmone/lib/evmone -I deps/evmone/include -I deps/evmone/evmc/include -I deps/intx/lib/intx -I deps/intx/include -I deps/bn128/include -I deps/ethash/include -I deps/ethash/lib/ethash -I deps/ethash/lib/keccak -I deps/ethash/lib/support -I deps/crypto-algorithms -I deps/mbedtls/include -I deps/godwoken-scripts/c/deps/sparse-merkle-tree/c -I deps/godwoken-scripts/c -I build -isystem deps/secp256k1-fix/src -isystem deps/secp256k1-fix c/tests/test_contracts.c -quiet -dumpdir build/test_contracts- -dumpbase test_contracts.c -dumpbase-ext .c -mtune=rocket -march=rv64imac -mabi=lp64 -march=rv64imac -g -Wall -version -fdata-sections -ffunction-sections -o /tmp/ccAIyuxz.s
+GNU C++17 (GCC) version 11.1.0 (riscv64-unknown-elf)
+	compiled by GNU C version 9.4.0, GMP version 6.2.0, MPFR version 4.0.2, MPC version 1.1.0, isl version none
+GGC heuristics: --param ggc-min-expand=100 --param ggc-min-heapsize=131072
+ignoring nonexistent directory "/opt/riscv/riscv64-unknown-elf/usr/local/include"
+ignoring duplicate directory "/opt/riscv/riscv64-unknown-elf/include"
+ignoring nonexistent directory "deps/intx/lib/intx"
+#include "..." search starts here:
+#include <...> search starts here:
+ .
+ c/ripemd160
+ deps/ckb-c-stdlib
+ deps/ckb-c-stdlib/molecule
+ deps/evmone/lib/evmone
+ deps/evmone/include
+ deps/evmone/evmc/include
+ deps/intx/include
+ deps/bn128/include
+ deps/ethash/include
+ deps/ethash/lib/ethash
+ deps/ethash/lib/keccak
+ deps/ethash/lib/support
+ deps/crypto-algorithms
+ deps/mbedtls/include
+ deps/godwoken-scripts/c/deps/sparse-merkle-tree/c
+ deps/godwoken-scripts/c
+ build
+ deps/secp256k1-fix/src
+ deps/secp256k1-fix
+ /opt/riscv/lib/gcc/riscv64-unknown-elf/11.1.0/../../../../riscv64-unknown-elf/include/c++/11.1.0
+ /opt/riscv/lib/gcc/riscv64-unknown-elf/11.1.0/../../../../riscv64-unknown-elf/include/c++/11.1.0/riscv64-unknown-elf
+ /opt/riscv/lib/gcc/riscv64-unknown-elf/11.1.0/../../../../riscv64-unknown-elf/include/c++/11.1.0/backward
+ /opt/riscv/lib/gcc/riscv64-unknown-elf/11.1.0/include
+ /opt/riscv/lib/gcc/riscv64-unknown-elf/11.1.0/include-fixed
+ /opt/riscv/lib/gcc/riscv64-unknown-elf/11.1.0/../../../../riscv64-unknown-elf/include
+End of search list.
+GNU C++17 (GCC) version 11.1.0 (riscv64-unknown-elf)
+	compiled by GNU C version 9.4.0, GMP version 6.2.0, MPFR version 4.0.2, MPC version 1.1.0, isl version none
+GGC heuristics: --param ggc-min-expand=100 --param ggc-min-heapsize=131072
+Compiler executable checksum: 6b0689452230992e7275ada6fd52b56b
+COLLECT_GCC_OPTIONS='-g' '-I' '.' '-I' 'c/ripemd160' '-I' 'deps/ckb-c-stdlib' '-I' 'deps/ckb-c-stdlib/molecule' '-I' 'deps/evmone/lib/evmone' '-I' 'deps/evmone/include' '-I' 'deps/evmone/evmc/include' '-I' 'deps/intx/lib/intx' '-I' 'deps/intx/include' '-I' 'deps/bn128/include' '-I' 'deps/ethash/include' '-I' 'deps/ethash/lib/ethash' '-I' 'deps/ethash/lib/keccak' '-I' 'deps/ethash/lib/support' '-I' 'deps/crypto-algorithms' '-I' 'deps/mbedtls/include' '-I' 'deps/godwoken-scripts/c/deps/sparse-merkle-tree/c' '-I' 'deps/godwoken-scripts/c' '-isystem' 'deps/secp256k1-fix/src' '-isystem' 'deps/secp256k1-fix' '-fdata-sections' '-ffunction-sections' '-Wall' '-I' 'build' '-o' 'build/test_contracts' '-L.' '-v' '-mtune=rocket' '-march=rv64imac' '-mabi=lp64' '-march=rv64imac' '-dumpdir' 'build/test_contracts-'
+ /opt/riscv/lib/gcc/riscv64-unknown-elf/11.1.0/../../../../riscv64-unknown-elf/bin/as -v -I . -I c/ripemd160 -I deps/ckb-c-stdlib -I deps/ckb-c-stdlib/molecule -I deps/evmone/lib/evmone -I deps/evmone/include -I deps/evmone/evmc/include -I deps/intx/lib/intx -I deps/intx/include -I deps/bn128/include -I deps/ethash/include -I deps/ethash/lib/ethash -I deps/ethash/lib/keccak -I deps/ethash/lib/support -I deps/crypto-algorithms -I deps/mbedtls/include -I deps/godwoken-scripts/c/deps/sparse-merkle-tree/c -I deps/godwoken-scripts/c -I build --gdwarf-5 --traditional-format -march=rv64imac -march=rv64imac -mabi=lp64 -o /tmp/ccG7OnXz.o /tmp/ccAIyuxz.s
+GNU assembler version 2.37 (riscv64-unknown-elf) using BFD version (GNU Binutils) 2.37
+COMPILER_PATH=/opt/riscv/libexec/gcc/riscv64-unknown-elf/11.1.0/:/opt/riscv/libexec/gcc/riscv64-unknown-elf/11.1.0/:/opt/riscv/libexec/gcc/riscv64-unknown-elf/:/opt/riscv/lib/gcc/riscv64-unknown-elf/11.1.0/:/opt/riscv/lib/gcc/riscv64-unknown-elf/:/opt/riscv/lib/gcc/riscv64-unknown-elf/11.1.0/../../../../riscv64-unknown-elf/bin/
+LIBRARY_PATH=/opt/riscv/lib/gcc/riscv64-unknown-elf/11.1.0/:/opt/riscv/lib/gcc/riscv64-unknown-elf/11.1.0/../../../../riscv64-unknown-elf/lib/:/opt/riscv/riscv64-unknown-elf/lib/
+COLLECT_GCC_OPTIONS='-g' '-I' '.' '-I' 'c/ripemd160' '-I' 'deps/ckb-c-stdlib' '-I' 'deps/ckb-c-stdlib/molecule' '-I' 'deps/evmone/lib/evmone' '-I' 'deps/evmone/include' '-I' 'deps/evmone/evmc/include' '-I' 'deps/intx/lib/intx' '-I' 'deps/intx/include' '-I' 'deps/bn128/include' '-I' 'deps/ethash/include' '-I' 'deps/ethash/lib/ethash' '-I' 'deps/ethash/lib/keccak' '-I' 'deps/ethash/lib/support' '-I' 'deps/crypto-algorithms' '-I' 'deps/mbedtls/include' '-I' 'deps/godwoken-scripts/c/deps/sparse-merkle-tree/c' '-I' 'deps/godwoken-scripts/c' '-isystem' 'deps/secp256k1-fix/src' '-isystem' 'deps/secp256k1-fix' '-fdata-sections' '-ffunction-sections' '-Wall' '-I' 'build' '-o' 'build/test_contracts' '-L.' '-v' '-mtune=rocket' '-march=rv64imac' '-mabi=lp64' '-march=rv64imac' '-dumpdir' 'build/test_contracts.'
+ /opt/riscv/libexec/gcc/riscv64-unknown-elf/11.1.0/collect2 -plugin /opt/riscv/libexec/gcc/riscv64-unknown-elf/11.1.0/liblto_plugin.so -plugin-opt=/opt/riscv/libexec/gcc/riscv64-unknown-elf/11.1.0/lto-wrapper -plugin-opt=-fresolution=/tmp/cc7D4miz.res -plugin-opt=-pass-through=-lgcc -plugin-opt=-pass-through=-lc -plugin-opt=-pass-through=-lgloss -plugin-opt=-pass-through=-lgcc --sysroot=/opt/riscv/riscv64-unknown-elf -melf64lriscv -o build/test_contracts /opt/riscv/lib/gcc/riscv64-unknown-elf/11.1.0/../../../../riscv64-unknown-elf/lib/crt0.o /opt/riscv/lib/gcc/riscv64-unknown-elf/11.1.0/crtbegin.o -L. -L/opt/riscv/lib/gcc/riscv64-unknown-elf/11.1.0 -L/opt/riscv/lib/gcc/riscv64-unknown-elf/11.1.0/../../../../riscv64-unknown-elf/lib -L/opt/riscv/riscv64-unknown-elf/lib -static --gc-sections /tmp/ccG7OnXz.o build/execution_state.o build/baseline.o build/analysis.o build/instruction_metrics.o build/instruction_names.o build/execution.o build/instructions.o build/instructions_calls.o build/evmone.o build/keccak.o build/keccakf800.o build/sha256.o build/memzero.o build/ripemd160.o build/bignum.o build/platform_util.o -lup_encrypt -lstdc++ -lm -lgcc --start-group -lc -lgloss --end-group -lgcc /opt/riscv/lib/gcc/riscv64-unknown-elf/11.1.0/crtend.o
+/opt/riscv/lib/gcc/riscv64-unknown-elf/11.1.0/../../../../riscv64-unknown-elf/bin/ld: /tmp/ccG7OnXz.o: in function `rsa_validate_signature(gw_context_t*, unsigned char const*, unsigned long, bool, unsigned char const*, unsigned long, unsigned char**, unsigned long*)':
+/home/zhengzhuo/polyjuice/godwoken-polyjuice/c/tests/../contracts.h:946: undefined reference to `rsa_with_sha256_verify(unsigned int, unsigned char const*, unsigned long, unsigned char const*, unsigned long, unsigned char const*, unsigned long)'
+collect2: error: ld returned 1 exit status

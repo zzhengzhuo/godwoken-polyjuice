@@ -1,0 +1,1 @@
+[{"inputs":[{"internalType":"uint32","name":"e","type":"uint32"},{"internalType":"bytes","name":"n","type":"bytes"},{"internalType":"bytes","name":"message","type":"bytes"},{"internalType":"bytes","name":"sig","type":"bytes"}],"name":"validate","outputs":[{"internalType":"bytes32","name":"","type":"bytes32"}],"stateMutability":"nonpayable","type":"function"}]
