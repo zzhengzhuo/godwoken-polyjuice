@@ -11,6 +11,7 @@ endif
 
 NPROC?=4
 CC=clang
+LD=clang
 CXX=clang++
 LLVM_PROFDATA=llvm-profdata
 LLVM_COV=llvm-cov
@@ -43,10 +44,15 @@ MOLC_VERSION := $(shell cat $(DEPS)/godwoken-scripts/c/Makefile | egrep "MOLC_VE
 PROTOCOL_VERSION := $(shell cat $(DEPS)/godwoken-scripts/c/Makefile | egrep "PROTOCOL_VERSION :=" | awk '{print $$3}')
 PROTOCOL_SCHEMA_URL := https://raw.githubusercontent.com/nervosnetwork/godwoken/${PROTOCOL_VERSION}/crates/types/schemas
 
+# PASSED_MBEDTLS_CFLAGS := -O3 -fPIC -nostdinc -nostdlib -DCKB_DECLARATION_ONLY -I../../ckb-c-stdlib-20210413/libc -fdata-sections -ffunction-sections
+
 ALL_OBJS := $(BUILD)/keccak.o $(BUILD)/keccakf800.o \
   $(BUILD)/execution_state.o $(BUILD)/evmc_hex.o $(BUILD)/baseline.o $(BUILD)/analysis.o $(BUILD)/instruction_metrics.o $(BUILD)/instruction_names.o $(BUILD)/execution.o $(BUILD)/instructions.o $(BUILD)/instructions_calls.o $(BUILD)/evmone.o \
-  $(BUILD)/sha256.o $(BUILD)/memzero.o $(BUILD)/ripemd160.o $(BUILD)/bignum.o $(BUILD)/platform_util.o
-BIN_DEPS := ../../c/contracts.h ../../c/sudt_contracts.h ../../c/other_contracts.h ../../c/polyjuice.h ../../c/polyjuice_utils.h $(BUILD)/secp256k1_data_info.h $(ALL_OBJS)
+  $(BUILD)/sha256.o $(BUILD)/memzero.o $(BUILD)/ripemd160.o $(BUILD)/bignum.o $(BUILD)/platform_util.o \
+  $(BUILD)/rsa.o $(BUILD)/platform.o $(BUILD)/md.o $(BUILD)/memory_buffer_alloc.o $(BUILD)/rsa_internal.o $(BUILD)/mbedtls_sha512.o $(BUILD)/mbedtls_sha256.o $(BUILD)/mbedtls_sha1.o $(BUILD)/mbedtls_ripemd160.o \
+  $(BUILD)/oid.o $(BUILD)/md5.o
+
+BIN_DEPS := ../../c/contracts.h ../../c/sudt_contracts.h ../../c/other_contracts.h ../../c/polyjuice.h $(BUILD)/secp256k1_data_info.h $(ALL_OBJS)
 GENERATOR_DEPS := ../../c/generator/secp256k1_helper.h $(BIN_DEPS)
 VALIDATOR_DEPS := ../../c/validator/secp256k1_helper.h $(BIN_DEPS)
 
@@ -167,14 +173,45 @@ build/ripemd160.o: ../../c/ripemd160/ripemd160.c
 
 # Mbed TLS is a C library that implements cryptographic primitives,
 # X.509 certificate manipulation and the SSL/TLS and DTLS protocols.
-build/platform_util.o: $(DEPS)/mbedtls/library/platform_util.c
+build/platform_util.o: $(DEPS)/mbedtls/library/platform_util.c mbedtls-prebuilding
 	$(CC) $(CFLAGS) $(LDFLAGS) -c -o $@ $<
-build/bignum.o: $(DEPS)/mbedtls/library/bignum.c
+build/platform.o: $(DEPS)/mbedtls/library/platform.c mbedtls-prebuilding
 	$(CC) $(CFLAGS) $(LDFLAGS) -c -o $@ $<
+build/bignum.o: $(DEPS)/mbedtls/library/bignum.c mbedtls-prebuilding
+	$(CC) $(CFLAGS) $(LDFLAGS) -c -o $@ $<
+build/rsa.o: $(DEPS)/mbedtls/library/rsa.c mbedtls-prebuilding
+	$(CC) $(CFLAGS) $(LDFLAGS) -c -o $@ $<
+build/md.o: $(DEPS)/mbedtls/library/md.c mbedtls-prebuilding
+	$(CC) $(CFLAGS) $(LDFLAGS) -c -o $@ $<
+build/memory_buffer_alloc.o: $(DEPS)/mbedtls/library/memory_buffer_alloc.c mbedtls-prebuilding
+	$(CC) $(CFLAGS) $(LDFLAGS) -c -o $@ $<
+build/rsa_internal.o: $(DEPS)/mbedtls/library/rsa_internal.c mbedtls-prebuilding
+	$(CC) $(CFLAGS) $(LDFLAGS) -c -o $@ $<
+build/mbedtls_sha512.o: $(DEPS)/mbedtls/library/sha512.c mbedtls-prebuilding
+	$(CC) $(CFLAGS) $(LDFLAGS) -c -o $@ $<
+build/mbedtls_sha256.o: $(DEPS)/mbedtls/library/sha256.c mbedtls-prebuilding
+	$(CC) $(CFLAGS) $(LDFLAGS) -c -o $@ $<
+build/mbedtls_sha1.o: $(DEPS)/mbedtls/library/sha1.c mbedtls-prebuilding
+	$(CC) $(CFLAGS) $(LDFLAGS) -c -o $@ $<
+build/mbedtls_ripemd160.o: $(DEPS)/mbedtls/library/ripemd160.c mbedtls-prebuilding
+	$(CC) $(CFLAGS) $(LDFLAGS) -c -o $@ $<	
+build/oid.o: $(DEPS)/mbedtls/library/oid.c mbedtls-prebuilding
+	$(CC) $(CFLAGS) $(LDFLAGS) -c -o $@ $<	
+build/md5.o: $(DEPS)/mbedtls/library/md5.c mbedtls-prebuilding
+	$(CC) $(CFLAGS) $(LDFLAGS) -c -o $@ $<	
 
-build/sha256.o: $(DEPS)/crypto-algorithms/sha256.c
+# build/impl.o: $(DEPS)/ckb-c-stdlib/libc/src/impl.c
+# 	$(CC) $(CFLAGS) $(LDFLAGS) -I$(DEPS)/ckb-c-stdlib/libc -D__SHARED_LIBRARY__ -c -o $@ $<
+
+build/sha256.o: $(DEPS)/crypto-algorithms/sha256.c mbedtls-prebuilding
 	$(CXX) $(CFLAGS) $(LDFLAGS) -c -o $@ $<
-
+# build/libmbedcrypto.a:
+# 	cp $(DEPS)/mbedtls-config-template.h $(DEPS)/mbedtls/include/mbedtls/config.h
+# 	make -C $(DEPS)/mbedtls/library
+# 	make -C $(DEPS)/mbedtls/library CC=${CC} LD=${LD} CFLAGS="${PASSED_MBEDTLS_CFLAGS}" libmbedcrypto.a
+# 	mv $(DEPS)/mbedtls/library/libmbedcrypto.a build/libmbedcrypto.a
+# build/validate_signature_rsa.o:../../c/validate_signature_rsa.c 
+# 	$(CC) $(CFLAGS) $(LDFLAGS) -c -o $@ $^  
 # Secp256k1 refers to the parameters of the elliptic curve used in Bitcoin's public-key cryptography, and is defined in Standards for Efficient Cryptography (SEC)
 build/secp256k1_data_info.h: build/dump_secp256k1_data
 	$<
@@ -190,6 +227,8 @@ $(SECP256K1_SRC):
 generate-protocol: check-moleculec-version build/blockchain.h build/godwoken.h
 check-moleculec-version:
 	test "$$(${MOLC} --version | awk '{ print $$2 }' | tr -d ' ')" = ${MOLC_VERSION}
+mbedtls-prebuilding:
+	cp $(DEPS)/mbedtls-config-template.h $(DEPS)/mbedtls/include/mbedtls/config.h
 
 build/blockchain.h: build/blockchain.mol
 	${MOLC} --language c --schema-file $< > $@
