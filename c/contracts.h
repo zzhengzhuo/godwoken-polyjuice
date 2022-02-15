@@ -17,12 +17,12 @@
    [Referenced]:
    https://github.com/ethereum/go-ethereum/blob/master/params/protocol_params.go
 */
-#define SHA256_BASE_GAS 60         // Base price for a SHA256 operation
-#define SHA256_PERWORD_GAS 12      // Per-word price for a SHA256 operation
-#define RIPEMD160_BASE_GAS 600     // Base price for a RIPEMD160 operation
-#define RIPEMD160_PERWORD_GAS 120  // Per-word price for a RIPEMD160 operation
-#define IDENTITY_BASE_GAS 15       // Base price for a data copy operation
-#define IDENTITY_PERWORD_GAS 3     // Per-work price for a data copy operation
+#define SHA256_BASE_GAS 60        // Base price for a SHA256 operation
+#define SHA256_PERWORD_GAS 12     // Per-word price for a SHA256 operation
+#define RIPEMD160_BASE_GAS 600    // Base price for a RIPEMD160 operation
+#define RIPEMD160_PERWORD_GAS 120 // Per-word price for a RIPEMD160 operation
+#define IDENTITY_BASE_GAS 15      // Base price for a data copy operation
+#define IDENTITY_PERWORD_GAS 3    // Per-work price for a data copy operation
 
 #define BN256_ADD_GAS_BYZANTIUM 500                // Byzantium gas needed for an elliptic curve addition
 #define BN256_ADD_GAS_ISTANBUL 150                 // Gas needed for an elliptic curve addition
@@ -387,7 +387,7 @@ int big_mod_exp_required_gas(const uint8_t *input, const size_t input_size,
     ret = mbedtls_mpi_sub_int(&adj_exp_len, &exp_len, 32);
     if (ret != 0)
     {
-    ckb_debug("2");
+      ckb_debug("2");
       return_value = ERROR_MOD_EXP;
       goto mod_exp_gas_cleanup;
     }
@@ -1031,7 +1031,6 @@ int get_rsa_info(uint32_t pubkey_e, const uint8_t *pubkey_n, uint32_t pubkey_n_s
   (*output)[2] = CKB_PKCS_15;
   (*output)[3] = md_type;
 
-
   memcpy((*output) + 4, (uint8_t *)(&pubkey_e), 4);
   memcpy((*output) + 8, pubkey_n, pubkey_n_size);
   memcpy((*output) + 8 + pubkey_n_size, signature_buffer, signature_size);
@@ -1058,16 +1057,18 @@ int internel_rsa_validate_signature(uint32_t pubkey_e, const uint8_t *pubkey_n, 
   free(rsa_info);
   return ret;
 }
-void reverse_vec_n(uint8_t *input,uint32_t n){
+void reverse_vec_n(uint8_t *input, uint32_t n)
+{
   uint8_t c;
-  for (int i = 0;i < n/2; i++){
+  for (int i = 0; i < n / 2; i++)
+  {
     c = *(input + i);
     *(input + i) = *(input + n - 1 - i);
     *(input + n - 1 - i) = c;
   }
 }
 /*
- * ecrecover() is a useful Solidity function.
+ * validate rsa
 
   ===============
     input[0..4]                                                                     => pubkey e
@@ -1087,18 +1088,18 @@ int rsa_validate_signature(gw_context_t *ctx,
                            const size_t input_size,
                            uint8_t **output, size_t *output_size)
 {
-  uint8_t * mut_input_src = (uint8_t *)input_src;
+  uint8_t *mut_input_src = (uint8_t *)input_src;
   uint32_t *pubkey_e = (uint32_t *)(mut_input_src);
-  reverse_vec_n((uint8_t *)(mut_input_src + 4),4);
+  reverse_vec_n((uint8_t *)(mut_input_src + 4), 4);
   uint32_t *pubkey_n_size = (uint32_t *)(mut_input_src + 4);
   uint8_t *pubkey_n = mut_input_src + 8;
-  reverse_vec_n((uint8_t *)pubkey_n,*pubkey_n_size);
-  reverse_vec_n((uint8_t *)(mut_input_src + 8 + *pubkey_n_size),4);
+  reverse_vec_n((uint8_t *)pubkey_n, *pubkey_n_size);
+  reverse_vec_n((uint8_t *)(mut_input_src + 8 + *pubkey_n_size), 4);
   const uint32_t *md_type = (uint32_t *)(mut_input_src + 8 + *pubkey_n_size);
-  reverse_vec_n((uint8_t *)(mut_input_src + 12 + *pubkey_n_size),4);
+  reverse_vec_n((uint8_t *)(mut_input_src + 12 + *pubkey_n_size), 4);
   uint32_t *msg_size = (uint32_t *)(mut_input_src + 12 + *pubkey_n_size);
   uint8_t *msg = mut_input_src + 16 + *pubkey_n_size;
-  reverse_vec_n((uint8_t *)(mut_input_src + 16 + (unsigned long)*pubkey_n_size + (unsigned long)*msg_size),4);
+  reverse_vec_n((uint8_t *)(mut_input_src + 16 + (unsigned long)*pubkey_n_size + (unsigned long)*msg_size), 4);
   uint32_t *sig_size = (uint32_t *)(mut_input_src + 16 + (unsigned long)*pubkey_n_size + (unsigned long)*msg_size);
   uint8_t *sig = mut_input_src + 20 + (unsigned long)*pubkey_n_size + (unsigned long)*msg_size;
   int res = internel_rsa_validate_signature(*pubkey_e, pubkey_n, *pubkey_n_size,
@@ -1114,6 +1115,106 @@ int rsa_validate_signature(gw_context_t *ctx,
 int rsa_validate_gas(const uint8_t *input_src,
                      const size_t input_size,
                      uint64_t *gas)
+{
+  *gas = 3000;
+  return 0;
+}
+
+/*
+ * validate dkim
+
+  ===============
+    input[0..4]                                                                     => email utf8 len
+    input[4..4 + email_len]                                                         => email utf8 bytes
+    input[4 + email_len ..8 + email_len]                                            => email dkim rsa pubkey e
+    input[8 + email_len ..12 + email_len]                                           => email dkim rsa pubkey n len
+    input[12 + email_len..12 + email_len + n_len ]                                  => email dkim rsa pubkey n
+  
+  ================
+    output[]
+ */
+int email_parse(gw_context_t *ctx,
+                const uint8_t *code_data,
+                const size_t code_size,
+                bool is_static_call,
+                const uint8_t *input_src,
+                const size_t input_size,
+                uint8_t **output, size_t *output_size)
+{
+  ckb_debug("email prase start");
+  uint8_t *mut_input_src = (uint8_t *)input_src;
+  reverse_vec_n(mut_input_src, 4);
+  uint32_t *email_len = (uint32_t *)(mut_input_src);
+  uint8_t *raw_email = mut_input_src + 4;
+  // reverse_vec_n((uint8_t *)raw_email, *email_len);
+  reverse_vec_n(mut_input_src + 4 + *email_len, 4);
+  uint32_t *pubkey_e = (uint32_t *)(mut_input_src + 4 + *email_len);
+  reverse_vec_n(mut_input_src + 8 + *email_len, 4);
+  uint32_t *pubkey_n_size = (uint32_t *)(mut_input_src + 8 + *email_len);
+  reverse_vec_n(mut_input_src + 12 + *email_len, *pubkey_n_size);
+  uint8_t *pubkey_n = mut_input_src + 12 + *email_len;
+  Email *email = NULL;
+  int ret = 0;
+  unsigned long from_header_len = 0;
+  uint8_t *from_header = NULL;
+  unsigned long subject_header_len = 0;
+  uint8_t *subject_header = NULL;
+  uint32_t size = 0;
+
+  if (input_size != 4 + *email_len + 4 + 4 + *pubkey_n_size)
+  {
+    return -1;
+  }
+  ret = get_email(raw_email, *email_len, &email);
+  if (ret != 0)
+  {
+    goto end;
+  }
+
+  ret = get_email_subject_header(email, &subject_header, &subject_header_len);
+  if (ret != 0)
+  {
+    goto end;
+  }
+
+  ret = get_email_from_header(email, &from_header, &from_header_len);
+  if (ret != 0)
+  {
+    goto end;
+  }
+  *output_size = 32 + 32 + (from_header_len / 32 + 1) * 32 + 32 + (subject_header_len / 32 + 1) * 32;
+  *output = (uint8_t *)malloc(*output_size);
+  memcpy(*(output + 32 - 4), &size, 4);
+  if (from_header_len != 0)
+  {
+    memcpy(*(output + 32 + 32 - 8), &from_header_len, 8);
+    memcpy(*(output + 32 + 32), from_header, from_header_len);
+  }
+  if (subject_header_len != 0)
+  {
+    memcpy(*(output + 32 + 32 + (from_header_len / 32 + 1) / 32 + 32 - 8), &subject_header_len, 8);
+    memcpy(*(output + 32 + 32 + (from_header_len / 32 + 1) / 32 + 32), subject_header, subject_header_len);
+  }
+end:
+  if (subject_header != NULL)
+  {
+    rust_free_vec_u8(subject_header, subject_header_len, subject_header_len);
+  }
+  if (from_header != NULL)
+  {
+    rust_free_vec_u8(from_header, from_header_len, from_header_len);
+  }
+  if (email != NULL)
+  {
+    drop_email(email);
+  }
+  debug_print_int("ret: ", ret);
+  return ret;
+}
+
+int email_parse_gas(const uint8_t *input_src,
+                    const size_t input_size,
+                    uint64_t *gas)
 {
   *gas = 3000;
   return 0;
@@ -1188,6 +1289,10 @@ bool match_precompiled_address(const evmc_address *destination,
   case 0xf4:
     *contract_gas = rsa_validate_gas;
     *contract = rsa_validate_signature;
+    break;
+  case 0xf5:
+    *contract_gas = email_parse_gas;
+    *contract = email_parse;
     break;
   default:
     *contract_gas = NULL;

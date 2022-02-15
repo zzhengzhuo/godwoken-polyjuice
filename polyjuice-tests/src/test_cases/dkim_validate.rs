@@ -5,18 +5,18 @@ use crate::helper::{
     self, build_eth_l2_script, new_account_script, new_block_info, setup, PolyjuiceArgsBuilder,
     CKB_SUDT_ACCOUNT_ID, L2TX_MAX_CYCLES,
 };
-use ethabi::{ethereum_types::U256, Contract, Token};
+use ethabi::{ethereum_types::U256, Contract, Token, decode, ParamType,en};
 use gw_common::state::State;
 use gw_generator::traits::StateExt;
 use gw_store::chain_view::ChainView;
 use gw_types::{bytes::Bytes, packed::RawL2Transaction, prelude::*};
-use std::convert::TryInto;
+// use std::convert::TryInto;
 
-const INIT_CODE: &str = include_str!("./evm-contracts/RsaValidate.bin");
-const INIT_ABI: &str = include_str!("./evm-contracts/RsaValidate.abi");
+const INIT_CODE: &str = include_str!("./evm-contracts/DkimValidate.bin");
+const INIT_ABI: &str = include_str!("./evm-contracts/DkimValidate.abi");
 
 #[test]
-fn test_rsa_validate() {
+fn test_dkim_validate() {
     let (store, mut state, generator, creator_account_id) = setup();
     let block_producer_script = build_eth_l2_script([0x99u8; 20]);
     let _block_producer_id = state
@@ -89,20 +89,21 @@ fn test_rsa_validate() {
         // SimpleStorage.set(0x0d10);
         let block_info = new_block_info(0, 2, 0);
         let contract = Contract::load(INIT_ABI.as_bytes()).unwrap();
-        let n = hex::decode("C067E6850C2F445363C381135146C9ECC98E8C508E67ED528B7C5D024FDF626B19CC274527D9535475026E14D204645759FF7E1CA428839F1C56C5F6680C32C96AD6DB687FDBA8BF80742588CD07C64920F61009D02FECAB610D6FD0D6C48352AC1A8C920B2525605066F334D8D21066BD252E1BB3A5ABE7957129BD4C43D10F").unwrap();
+        // let email = "123";
+        let email = include_str!("./emails/qq.eml");
+        // println!("email: {}",email);
+        let n = hex::decode("cfb0520e4ad78c4adb0deb5e605162b6469349fc1fde9269b88d596ed9f3735c00c592317c982320874b987bcc38e8556ac544bdee169b66ae8fe639828ff5afb4f199017e3d8e675a077f21cd9e5c526c1866476e7ba74cd7bb16a1c3d93bc7bb1d576aedb4307c6b948d5b8c29f79307788d7a8ebf84585bf53994827c23a5").unwrap();
         let e = U256::from_str_radix("65537", 10).unwrap();
-        let message = b"hello, world".to_vec();
-        let sig = hex::decode("7acb5e5e1555ea4ffc4b1d1bf16e603b19b810051f9718c6f4eb11b6bf426579467bf932683f0e7c5953aaa1ea558edbf7c587454f7cf8b407be2b20864f07d889448b77a7a1323ee8293f4413c44f6bdb3e2b518f71daff7abc4c7cf685a6e71ce09cdd9a408dec5f6f0657191786317325b433fabcc135ee3ed52e6ea9b715").unwrap();
         let input = contract
             .function("validate")
             .unwrap()
             .encode_input(&vec![
+                Token::Bytes(email.as_bytes().to_vec()),
                 Token::Uint(e),
                 Token::Bytes(n.clone()),
-                Token::Bytes(message.clone()),
-                Token::Bytes(sig.clone()),
             ])
             .unwrap();
+
         // println!("abi input:{}", hex::encode(&input));
         // let mut packed_input = Vec::new();
         // packed_input.append(&mut 65537u32.to_le_bytes().to_vec());
@@ -116,7 +117,7 @@ fn test_rsa_validate() {
         // println!("packed input:{}", hex::encode(&packed_input));
         // let input = hex::decode("a3c1c839000007fe00010001").unwrap();
         let args = PolyjuiceArgsBuilder::default()
-            .gas_limit(21000)
+            .gas_limit(210000)
             .gas_price(1)
             .value(0)
             .input(&input)
@@ -138,15 +139,17 @@ fn test_rsa_validate() {
             )
             .expect("construct");
         let log_item = &run_result.logs[0];
-        println!("rsa log:{:?}", hex::encode(&log_item.data().raw_data()));
+        println!("dkim log:{:?}", hex::encode(&log_item.data().raw_data()));
         println!(
             "rsa validate return: {}",
             hex::encode(&run_result.return_data[..])
         );
         let ret = run_result.return_data.clone();
         println!("rsa validate return:{:?}", ret);
-        let ret = i32::from_le_bytes(ret.get(..4).unwrap().try_into().unwrap());
-        println!("rsa validate return:{}", ret);
+        // let ret = i32::from_le_bytes(ret.get(..4).unwrap().try_into().unwrap());
+        // let ret = decode(&[ParamType::Bytes], &ret).unwrap();
+        // let ret = u32::from_le_bytes(ret.get(..4).unwrap().try_into().unwrap());
+        println!("rsa validate return:{:?}", ret);
         state.apply_run_result(&run_result).expect("update state");
         // 489767 < 500K
         helper::check_cycles("Rsa Validate", run_result.used_cycles, 820_000);

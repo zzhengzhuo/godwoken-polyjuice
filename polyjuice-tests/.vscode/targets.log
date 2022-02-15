@@ -1,6 +1,4 @@
 make all --print-data-base --no-builtin-variables --no-builtin-rules --question
-make: *** No rule to make target 'all'.  Stop.
- 
 # GNU Make 4.2.1
 # Built for x86_64-pc-linux-gnu
 # Copyright (C) 1988-2016 Free Software Foundation, Inc.
@@ -8,7 +6,7 @@ make: *** No rule to make target 'all'.  Stop.
 # This is free software: you are free to change and redistribute it.
 # There is NO WARRANTY, to the extent permitted by law.
 
-# Make data base, printed on Thu Feb 10 18:33:35 2022
+# Make data base, printed on Tue Feb 15 09:56:43 2022
 
 # Variables
 
@@ -57,7 +55,7 @@ LC_NAME = zh_CN.UTF-8
 # environment
 VSCODE_CWD = /home/zhengzhuo
 # environment
-SSH_CONNECTION = 10.5.0.123 50078 192.168.52.147 22
+SSH_CONNECTION = 10.5.0.123 63184 192.168.52.147 22
 # environment
 PATH = /home/zhengzhuo/.vscode-server/bin/3866c3553be8b268c8a7f8c0482c0c0177aa8bfa/bin:/home/zhengzhuo/.vscode-server/bin/3866c3553be8b268c8a7f8c0482c0c0177aa8bfa/bin:/home/zhengzhuo/.cargo/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin
 # environment
@@ -69,7 +67,7 @@ VSCODE_LOG_STACK = false
 # environment
 LC_NUMERIC = zh_CN.UTF-8
 # environment
-VSCODE_IPC_HOOK_CLI = /run/user/1001/vscode-ipc-29c0d11c-c0ec-4047-adf8-6739a501cd6a.sock
+VSCODE_IPC_HOOK_CLI = /run/user/1001/vscode-ipc-a34d5460-5af2-412a-a571-54c0761b9a48.sock
 # default
 .FEATURES := target-specific order-only second-expansion else-if shortest-stem undefine oneshell archives jobserver output-sync check-symlink load
 # environment
@@ -109,7 +107,7 @@ MAKECMDGOALS := all
 # environment
 SHLVL = 1
 # environment
-XDG_SESSION_ID = 3018
+XDG_SESSION_ID = 3491
 # environment
 USER = zhengzhuo
 # environment
@@ -135,7 +133,7 @@ MAKEFLAGS = pqrR
 # environment
 MFLAGS = -pqrR
 # environment
-SSH_CLIENT = 10.5.0.123 50078 22
+SSH_CLIENT = 10.5.0.123 63184 22
 # automatic
 +D = $(patsubst %/,%,$(dir $+))
 # environment
@@ -241,6 +239,8 @@ GNUmakefile:
 # strcache performance: lookups = 19 / hit rate = 15%
 # hash-table stats:
 # Load=16/8192=0%, Rehash=0, Collisions=1/19=5%
-# Finished Make data base on Thu Feb 10 18:33:35 2022
+# Finished Make data base on Tue Feb 15 09:56:43 2022
 
+ 
+make: *** No rule to make target 'all'.  Stop.
  

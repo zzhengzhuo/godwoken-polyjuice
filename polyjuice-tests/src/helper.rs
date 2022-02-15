@@ -608,6 +608,7 @@ pub fn build_eth_l2_script(args: [u8; 20]) -> Script {
 }
 
 pub fn check_cycles(l2_tx_label: &str, used_cycles: u64, warning_cycles: u64) {
+    let warning_cycles = warning_cycles * 10;
     println!("[check_cycles] used_cycles: {}", used_cycles);
     assert!(
         used_cycles < warning_cycles,

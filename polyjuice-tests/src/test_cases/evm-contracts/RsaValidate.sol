@@ -26,7 +26,7 @@ contract RsaValidate {
             if ret {
                 return(ret, 4)
             }
+            return(output, 32)
         }
-        return output;
     }
 }
