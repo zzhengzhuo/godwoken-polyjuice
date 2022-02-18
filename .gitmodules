@@ -28,3 +28,6 @@
 [submodule "deps/godwoken-scripts"]
 	path = deps/godwoken-scripts
 	url = https://github.com/nervosnetwork/godwoken-scripts.git
+[submodule "deps/up-encrypt"]
+	path = deps/up-encrypt
+	url = https://github.com/zzhengzhuo/up-encrypt.git

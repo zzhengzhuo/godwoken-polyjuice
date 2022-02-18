@@ -44,7 +44,7 @@ ALL_OBJS := build/execution_state.o build/baseline.o build/analysis.o build/inst
   build/keccak.o build/keccakf800.o \
   build/sha256.o build/memzero.o build/ripemd160.o build/bignum.o build/platform_util.o \
   build/rsa.o build/platform.o build/md.o build/memory_buffer_alloc.o build/rsa_internal.o build/mbedtls_sha512.o build/mbedtls_sha256.o build/mbedtls_sha1.o build/mbedtls_ripemd160.o \
-  build/oid.o build/md5.o
+  build/oid.o build/md5.o build/libup_encrypt.a
 BIN_DEPS := libup_encrypt.a c/contracts.h c/sudt_contracts.h c/other_contracts.h c/polyjuice.h c/polyjuice_utils.h build/secp256k1_data_info.h $(ALL_OBJS)
 GENERATOR_DEPS := c/generator/secp256k1_helper.h $(BIN_DEPS)
 VALIDATOR_DEPS := c/validator/secp256k1_helper.h $(BIN_DEPS)
@@ -53,11 +53,14 @@ VALIDATOR_DEPS := c/validator/secp256k1_helper.h $(BIN_DEPS)
 # BUILDER_DOCKER := nervos/ckb-riscv-gnu-toolchain@sha256:aae8a3f79705f67d505d1f1d5ddc694a4fd537ed1c7e9622420a470d59ba2ec3
 # docker pull nervos/ckb-riscv-gnu-toolchain:bionic-20190702
 BUILDER_DOCKER := nervos/ckb-riscv-gnu-toolchain@sha256:7b168b4b109a0f741078a71b7c4dddaf1d283a5244608f7851f5714fbad273ba
+RUST_BUILDER_DOCKER := zzhengzhuo015/rust-riscv-docker:2022-2-18
 
 all: build/test_contracts build/test_rlp build/generator build/validator build/generator_log build/validator_log build/test_ripemd160 build/blockchain.h build/godwoken.h
 
 all-via-docker: generate-protocol
 	mkdir -p build
+	docker build -f docker/DOCKERFILE -t riscv-with-rust ./docker 
+	docker run --rm -v `pwd`:/code ${RUST_BUILDER_DOCKER} bash -c "cd /code && make build/libup_encrypt.a"
 	docker run --rm -v `pwd`:/code ${BUILDER_DOCKER} bash -c "cd /code && make"
 	make patch-generator
 log-version-via-docker: generate-protocol
@@ -94,35 +97,35 @@ patch-generator_log: build/ckb-binary-patcher
 
 build/generator: c/generator.c $(GENERATOR_DEPS)
 	cd $(SECP_DIR) && (git apply workaround-fix-g++-linking.patch || true) && cd - # apply patch
-	$(CXX) $(CFLAGS) $(LDFLAGS) -Ibuild -o $@ c/generator.c libup_encrypt.a $(ALL_OBJS) -DNO_DEBUG_LOG
+	$(CXX) $(CFLAGS) $(LDFLAGS) -Ibuild -o $@ c/generator.c $(ALL_OBJS) -DNO_DEBUG_LOG
 	$(OBJCOPY) --only-keep-debug $@ $@.debug
 	$(OBJCOPY) --strip-debug --strip-all $@
 	cd $(SECP_DIR) && (git apply -R workaround-fix-g++-linking.patch || true) && cd - # revert patch
 
 build/validator: c/validator.c $(VALIDATOR_DEPS)
 	cd $(SECP_DIR) && (git apply workaround-fix-g++-linking.patch || true) && cd - # apply patch
-	$(CXX) $(CFLAGS) $(LDFLAGS) -Ibuild -o $@ c/validator.c libup_encrypt.a $(ALL_OBJS) -DNO_DEBUG_LOG
+	$(CXX) $(CFLAGS) $(LDFLAGS) -Ibuild -o $@ c/validator.c $(ALL_OBJS) -DNO_DEBUG_LOG
 	$(OBJCOPY) --only-keep-debug $@ $@.debug
 	$(OBJCOPY) --strip-debug --strip-all $@
 	cd $(SECP_DIR) && (git apply -R workaround-fix-g++-linking.patch || true) && cd - # revert patch
 
 build/generator_log: c/generator.c $(GENERATOR_DEPS)
 	cd $(SECP_DIR) && (git apply workaround-fix-g++-linking.patch || true) && cd - # apply patch
-	$(CXX) $(CFLAGS) $(LDFLAGS) -Ibuild -o $@ c/generator.c libup_encrypt.a $(ALL_OBJS)
+	$(CXX) $(CFLAGS) $(LDFLAGS) -Ibuild -o $@ c/generator.c $(ALL_OBJS)
 	$(OBJCOPY) --only-keep-debug $@ $@.debug
 	$(OBJCOPY) --strip-debug --strip-all $@
 	cd $(SECP_DIR) && (git apply -R workaround-fix-g++-linking.patch || true) && cd - # revert patch
 
 build/validator_log: c/validator.c $(VALIDATOR_DEPS)
 	cd $(SECP_DIR) && (git apply workaround-fix-g++-linking.patch || true) && cd - # apply patch
-	$(CXX) $(CFLAGS) $(LDFLAGS) -Ibuild -o $@ c/validator.c libup_encrypt.a $(ALL_OBJS)
+	$(CXX) $(CFLAGS) $(LDFLAGS) -Ibuild -o $@ c/validator.c $(ALL_OBJS)
 	$(OBJCOPY) --only-keep-debug $@ $@.debug
 	$(OBJCOPY) --strip-debug --strip-all $@
 	cd $(SECP_DIR) && (git apply -R workaround-fix-g++-linking.patch || true) && cd - # revert patch
 
 build/test_contracts: c/tests/test_contracts.c $(VALIDATOR_DEPS)
 	cd $(SECP_DIR) && (git apply workaround-fix-g++-linking.patch || true) && cd - # apply patch
-	$(CXX) $(CFLAGS) $(LDFLAGS) -Ibuild -o $@ c/tests/test_contracts.c libup_encrypt.a $(ALL_OBJS)
+	$(CXX) $(CFLAGS) $(LDFLAGS) -Ibuild -o $@ c/tests/test_contracts.c $(ALL_OBJS)
 	$(OBJCOPY) --only-keep-debug $@ $@.debug
 	$(OBJCOPY) --strip-debug --strip-all $@
 	cd $(SECP_DIR) && (git apply -R workaround-fix-g++-linking.patch || true) && cd - # revert patch
@@ -137,6 +140,9 @@ build/test_rlp: c/tests/test_rlp.c $(VALIDATOR_DEPS)
 build/test_ripemd160: c/ripemd160/test_ripemd160.c c/ripemd160/ripemd160.h c/ripemd160/memzero.h $(ALL_OBJS)
 	$(CXX) $(CFLAGS) $(LDFLAGS) -Ibuild -o $@ c/ripemd160/test_ripemd160.c $(ALL_OBJS)
 	riscv64-unknown-elf-run build/test_ripemd160
+
+build/libup_encrypt.a: 
+	cd deps/up-encrypt && cargo build --release --target riscv64imac-unknown-none-elf -Z unstable-options && cp target/riscv64imac-unknown-none-elf/release/libup_encrypt.a ../../build/ && cargo clean
 
 build/execution_state.o: deps/evmone/lib/evmone/execution_state.cpp
 	$(CXX) $(CXXFLAGS) $(LDFLAGS) -c -o $@ $<

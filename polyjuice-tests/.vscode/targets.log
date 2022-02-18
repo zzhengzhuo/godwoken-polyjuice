@@ -8,7 +8,7 @@ make: *** No rule to make target 'all'.  Stop.
 # This is free software: you are free to change and redistribute it.
 # There is NO WARRANTY, to the extent permitted by law.
 
-# Make data base, printed on Thu Feb 17 11:21:19 2022
+# Make data base, printed on Fri Feb 18 14:20:31 2022
 
 # Variables
 
@@ -57,7 +57,7 @@ LC_NAME = zh_CN.UTF-8
 # environment
 VSCODE_CWD = /home/zhengzhuo
 # environment
-SSH_CONNECTION = 10.5.0.123 54870 192.168.52.147 22
+SSH_CONNECTION = 10.5.0.123 63711 192.168.52.147 22
 # environment
 PATH = /home/zhengzhuo/.vscode-server/bin/3866c3553be8b268c8a7f8c0482c0c0177aa8bfa/bin:/home/zhengzhuo/.vscode-server/bin/3866c3553be8b268c8a7f8c0482c0c0177aa8bfa/bin:/home/zhengzhuo/.cargo/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin
 # environment
@@ -69,7 +69,7 @@ VSCODE_LOG_STACK = false
 # environment
 LC_NUMERIC = zh_CN.UTF-8
 # environment
-VSCODE_IPC_HOOK_CLI = /run/user/1001/vscode-ipc-48a5e677-4c35-433e-9ada-79baab744034.sock
+VSCODE_IPC_HOOK_CLI = /run/user/1001/vscode-ipc-a5577406-7a9f-4db1-8db7-65bfe14ea175.sock
 # default
 .FEATURES := target-specific order-only second-expansion else-if shortest-stem undefine oneshell archives jobserver output-sync check-symlink load
 # environment
@@ -109,7 +109,7 @@ MAKECMDGOALS := all
 # environment
 SHLVL = 1
 # environment
-XDG_SESSION_ID = 3610
+XDG_SESSION_ID = 28
 # environment
 USER = zhengzhuo
 # environment
@@ -135,7 +135,7 @@ MAKEFLAGS = pqrR
 # environment
 MFLAGS = -pqrR
 # environment
-SSH_CLIENT = 10.5.0.123 54870 22
+SSH_CLIENT = 10.5.0.123 63711 22
 # automatic
 +D = $(patsubst %/,%,$(dir $+))
 # environment
@@ -241,6 +241,6 @@ GNUmakefile:
 # strcache performance: lookups = 19 / hit rate = 15%
 # hash-table stats:
 # Load=16/8192=0%, Rehash=0, Collisions=1/19=5%
-# Finished Make data base on Thu Feb 17 11:21:19 2022
+# Finished Make data base on Fri Feb 18 14:20:31 2022
 
  
