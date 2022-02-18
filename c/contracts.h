@@ -1052,7 +1052,6 @@ int internel_rsa_validate_signature(uint32_t pubkey_e, const uint8_t *pubkey_n, 
   {
     return ret;
   }
-
   ret = validate_signature(NULL, rsa_info, rsa_info_size, msg_buf, msg_size, NULL, NULL);
   free(rsa_info);
   return ret;
@@ -1121,14 +1120,69 @@ int rsa_validate_gas(const uint8_t *input_src,
 }
 
 /*
+ * return:
+ *  0 success
+ *  -1 expected `0x`
+ *  -2 expected 64 hex bytes 
+*/
+int deal_email_subject(uint8_t *subject_header, uint32_t subject_header_len, uint8_t **sig_hash)
+{
+  for (uint32_t i = 0; i < subject_header_len - 64 - 2; i++)
+  {
+    if (subject_header[i] == '0' &&
+        (subject_header[i + 1] = 'x' || subject_header[i + 1] == 'X'))
+    {
+      *sig_hash = (uint8_t *)malloc(32);
+      for (int j = 0; j < 32; j++)
+      {
+        uint8_t part1 = subject_header[i + 2 + j * 2];
+        uint8_t part2 = subject_header[i + 2 + j * 2 + 1];
+        if (part1 >= 'a' && part1 <= 'f')
+        {
+          part1 = part1 - 'a' + 10;
+        }
+        else if (part1 >= '0' && part1 <= '9')
+        {
+          part1 = part1 - '0';
+        }
+        else
+        {
+          goto invalid_hex;
+        }
+
+        if (part2 >= 'a' && part2 <= 'f')
+        {
+          part2 = part2 - 'a' + 10;
+        }
+        else if (part2 >= '0' && part2 <= '9')
+        {
+          part2 = part2 - '0';
+        }
+        else
+        {
+          goto invalid_hex;
+        }
+        (*sig_hash)[j] = part1 * 16 + part2;
+        continue;
+      invalid_hex:
+        free(*sig_hash);
+        return -2;
+      }
+      return 0;
+    }
+  }
+  return -2;
+}
+
+/*
  * validate dkim
 
   ===============
-    input[0..4]                                                                     => email utf8 len
-    input[4..4 + email_len]                                                         => email utf8 bytes
-    input[4 + email_len ..8 + email_len]                                            => email dkim rsa pubkey e
-    input[8 + email_len ..12 + email_len]                                           => email dkim rsa pubkey n len
-    input[12 + email_len..12 + email_len + n_len ]                                  => email dkim rsa pubkey n
+    input[0 .. 4]                                                     => email dkim rsa pubkey e
+    input[4 .. 8]                                                     => email dkim rsa pubkey n len
+    input[8 .. 8 + pubkey_n_len ]                                     => email dkim rsa pubkey n
+    input[8 + pubkey_n_len .. 12 + pubkey_n_len]                      => email utf8 len
+    input[12 + pubkey_n_len .. 12 + pubkey_n_n + email_len]           => email utf8 bytes
   
   ================
     output[]
@@ -1144,26 +1198,39 @@ int email_parse(gw_context_t *ctx,
   ckb_debug("email prase start");
   uint8_t *mut_input_src = (uint8_t *)input_src;
   reverse_vec_n(mut_input_src, 4);
-  uint32_t *email_len = (uint32_t *)(mut_input_src);
-  uint8_t *raw_email = mut_input_src + 4;
-  // reverse_vec_n((uint8_t *)raw_email, *email_len);
-  reverse_vec_n(mut_input_src + 4 + *email_len, 4);
-  uint32_t *pubkey_e = (uint32_t *)(mut_input_src + 4 + *email_len);
-  reverse_vec_n(mut_input_src + 8 + *email_len, 4);
-  uint32_t *pubkey_n_size = (uint32_t *)(mut_input_src + 8 + *email_len);
-  reverse_vec_n(mut_input_src + 12 + *email_len, *pubkey_n_size);
-  uint8_t *pubkey_n = mut_input_src + 12 + *email_len;
+  uint32_t *pubkey_e = (uint32_t *)(mut_input_src);
+  reverse_vec_n(mut_input_src + 4, 4);
+  uint32_t *pubkey_n_size = (uint32_t *)(mut_input_src + 4);
+  reverse_vec_n(mut_input_src + 8, *pubkey_n_size);
+  uint8_t *pubkey_n = mut_input_src + 8;
+  reverse_vec_n(mut_input_src + 8 + *pubkey_n_size, 4);
+  uint32_t *email_len = (uint32_t *)(mut_input_src + 8 + *pubkey_n_size);
+  uint8_t *raw_email = mut_input_src + 12 + *pubkey_n_size;
+
+  ckb_debug("input parse succeed");
+
   Email *email = NULL;
   int ret = 0;
   unsigned long from_header_len = 0;
   uint8_t *from_header = NULL;
   unsigned long subject_header_len = 0;
   uint8_t *subject_header = NULL;
-  uint32_t size = 0;
+  uint8_t *subject_header_bytes = NULL;
+  const uint8_t *const *dkim_msg = NULL;
+  const uintptr_t *dkim_msg_len = NULL;
+  uintptr_t dkim_msg_num = 0;
+  const uint8_t *const *dkim_sig = NULL;
+  const uintptr_t *dkim_sig_len = NULL;
+  uintptr_t dkim_sig_num = 0;
+
+  bool dkim_verify = false;
 
   if (input_size != 4 + *email_len + 4 + 4 + *pubkey_n_size)
   {
-    return -1;
+    debug_print_int("input size", input_size);
+    debug_print_int("email len", *email_len);
+    debug_print_int("pubkey len", *pubkey_n_size);
+    debug_print_data("input: ", input_src, input_size);
   }
   ret = get_email(raw_email, *email_len, &email);
   if (ret != 0)
@@ -1171,31 +1238,100 @@ int email_parse(gw_context_t *ctx,
     goto end;
   }
 
+  ret = get_email_dkim_msg(email, &dkim_msg, &dkim_msg_len, &dkim_msg_num);
+  if (ret != 0)
+  {
+    goto end;
+  }
+  ret = get_email_dkim_sig(email, &dkim_sig, &dkim_sig_len, &dkim_sig_num);
+  if (ret != 0)
+  {
+    goto end;
+  }
+
+  if (dkim_msg_num != dkim_sig_num)
+  {
+    ret = -3;
+    goto end;
+  }
+  debug_print_data("pubkey n: ", pubkey_n, *pubkey_n_size);
+  debug_print_int("pubkey n size: ", (uint32_t)(*pubkey_n_size));
+  debug_print_int("pubkey e: ", *pubkey_e);
+  debug_print_data("dkim msg: ", dkim_msg[0], dkim_msg_len[0]);
+  debug_print_int("dkim msg len: ", dkim_msg_len[0]);
+  debug_print_data("dkim sig: ", dkim_sig[0], dkim_sig_len[0]);
+  debug_print_int("dkim sig len: ", dkim_sig_len[0]);
+  for (uintptr_t i = 0; i < dkim_msg_num; i++)
+  {
+    int r = internel_rsa_validate_signature(*pubkey_e, pubkey_n, (uint32_t)(*pubkey_n_size), CKB_MD_SHA256,
+                                            (const uint8_t *)(dkim_msg[i]), (uint32_t)(dkim_msg_len[i]),
+                                            (const uint8_t *)(dkim_sig[i]), (uint32_t)(dkim_sig_len[i]));
+    if (r == 0)
+    {
+      dkim_verify = true;
+      break;
+    }
+    debug_print_int("dkim verify ret: ", r);
+  }
+  if (!dkim_verify)
+  {
+    ret = -4;
+    goto end;
+  }
+
   ret = get_email_subject_header(email, &subject_header, &subject_header_len);
+  debug_print_data("subject_header: ", subject_header, subject_header_len);
+  debug_print_int("subject_header_len: ", subject_header_len);
   if (ret != 0)
   {
     goto end;
   }
 
   ret = get_email_from_header(email, &from_header, &from_header_len);
+  debug_print_data("from_header: ", from_header, from_header_len);
+  debug_print_int("from_header_len: ", from_header_len);
   if (ret != 0)
   {
     goto end;
   }
-  *output_size = 32 + 32 + (from_header_len / 32 + 1) * 32 + 32 + (subject_header_len / 32 + 1) * 32;
-  *output = (uint8_t *)malloc(*output_size);
-  memcpy(*(output + 32 - 4), &size, 4);
-  if (from_header_len != 0)
+
+  uint8_t from_hash[32];
+  SHA256_CTX hash_ctx_1;
+  sha256_init(&hash_ctx_1);
+  sha256_update(&hash_ctx_1, from_header, from_header_len - 1);
+  sha256_final(&hash_ctx_1, from_hash);
+
+  ret = deal_email_subject(subject_header, subject_header_len, &subject_header_bytes);
+  debug_print_data("subject header bytes: ", subject_header_bytes, 32);
+  if (ret != 0)
   {
-    memcpy(*(output + 32 + 32 - 8), &from_header_len, 8);
-    memcpy(*(output + 32 + 32), from_header, from_header_len);
+    goto end;
   }
-  if (subject_header_len != 0)
-  {
-    memcpy(*(output + 32 + 32 + (from_header_len / 32 + 1) / 32 + 32 - 8), &subject_header_len, 8);
-    memcpy(*(output + 32 + 32 + (from_header_len / 32 + 1) / 32 + 32), subject_header, subject_header_len);
-  }
+
+  *output = (uint8_t *)malloc(64);
+  memcpy(*output, from_hash, 32);
+  memcpy(*output + 32, subject_header_bytes, 32);
+  *output_size = 64;
+
 end:
+  if (dkim_msg_num != 0)
+  {
+    for (uintptr_t i = 0; i < dkim_msg_num; i++)
+    {
+      rust_free_vec_u8((uint8_t *)(dkim_msg[i]), dkim_msg_len[i], dkim_msg_len[i]);
+    }
+    rust_free_ptr_vec((uint8_t **)dkim_msg, dkim_msg_num, dkim_msg_num);
+    rust_free_vec_usize((uintptr_t *)dkim_msg_len, dkim_msg_num, dkim_msg_num);
+  }
+  if (dkim_sig_num != 0)
+  {
+    for (uintptr_t i = 0; i < dkim_sig_num; i++)
+    {
+      rust_free_vec_u8((uint8_t *)(dkim_sig[i]), dkim_sig_len[i], dkim_sig_len[i]);
+    }
+    rust_free_ptr_vec((uint8_t **)dkim_sig, dkim_sig_num, dkim_sig_num);
+    rust_free_vec_usize((uintptr_t *)dkim_sig_len, dkim_sig_num, dkim_sig_num);
+  }
   if (subject_header != NULL)
   {
     rust_free_vec_u8(subject_header, subject_header_len, subject_header_len);
@@ -1207,6 +1343,10 @@ end:
   if (email != NULL)
   {
     drop_email(email);
+  }
+  if (subject_header_bytes != NULL)
+  {
+    free(subject_header_bytes);
   }
   debug_print_int("ret: ", ret);
   return ret;

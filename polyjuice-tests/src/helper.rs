@@ -28,7 +28,7 @@ use gw_types::{
 use rlp::RlpStream;
 use std::{fs, io::Read, path::PathBuf};
 
-pub const L2TX_MAX_CYCLES: u64 = 7000_0000;
+pub const L2TX_MAX_CYCLES: u64 = 70_000_0000;
 
 // meta contract
 pub const META_VALIDATOR_PATH: &str = "../build/godwoken-scripts/meta-contract-validator";

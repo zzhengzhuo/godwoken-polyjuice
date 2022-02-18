@@ -1,4 +1,4 @@
-pragma solidity >=0.4.0;
+pragma solidity >=0.6.0;
 
 contract RsaValidate {
     function validate(
@@ -23,7 +23,7 @@ contract RsaValidate {
         bytes32 output;
         assembly {
             let ret := call(not(0), 0xf4, 0x0, input, len, output, 32)
-            if ret {
+            if iszero(ret) {
                 return(ret, 4)
             }
             return(output, 32)
