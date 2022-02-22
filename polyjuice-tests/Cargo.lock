@@ -145,6 +145,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "base64"
+version = "0.13.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "904dfeac50f3cdaba28fc6f57fdcddb75f49ed61346676a78c4ffe55877802fd"
+
+[[package]]
 name = "bindgen"
 version = "0.59.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -562,6 +568,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d3dd60d1080a57a05ab032377049e0591415d2b31afd7028356dbf3cc6dcb066"
 dependencies = [
  "generic-array",
+]
+
+[[package]]
+name = "email-rs"
+version = "0.1.0"
+source = "git+https://github.com/sking789/email-rs.git?branch=multi-dkim-header#9991035d76caf894b9b43a06b35dbecf7d281ef8"
+dependencies = [
+ "base64",
+ "quoted_printable",
 ]
 
 [[package]]
@@ -1203,6 +1218,7 @@ name = "polyjuice-tests"
 version = "0.1.1"
 dependencies = [
  "ckb-vm",
+ "email-rs",
  "env_logger",
  "ethabi",
  "gw-common",
@@ -1264,6 +1280,11 @@ checksum = "38bc8cc6a5f2e3655e0899c1b848643b2562f853f114bfec7be120678e3ace05"
 dependencies = [
  "proc-macro2",
 ]
+
+[[package]]
+name = "quoted_printable"
+version = "0.4.3"
+source = "git+https://github.com/zzhengzhuo/quoted-printable.git#05a4fceebeeb175e8b0f3cc2a656bd1ddf1a3f09"
 
 [[package]]
 name = "radium"

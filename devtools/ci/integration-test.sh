@@ -35,7 +35,7 @@ docker run --rm -v $GW_SCRIPTS_DIR:/build-dir \
 cd $TESTS_DIR
 export RUST_BACKTRACE=full
 # cargo test --package polyjuice-tests --bin polyjuice-tests -- test_cases::dkim_validate::test_dkim_validate --exact --nocapture
-solc src/test_cases/evm-contracts/DkimValidate.sol --abi --bin -o src/test_cases/evm-contracts --overwrite
+# solc src/test_cases/evm-contracts/DkimValidate.sol --abi --bin -o src/test_cases/evm-contracts --overwrite
 
-cargo test -- --nocapture
+RUST_LOG=debug cargo test -- --nocapture
 # cargo bench | egrep -v debug

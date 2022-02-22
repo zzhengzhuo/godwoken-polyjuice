@@ -31,3 +31,6 @@ ethabi = "16.0.0"
 # rand = "0.7.3"
 # blake2b-rs = "0.2"
 # serde_json = "1.0"
+
+[dev-dependencies]
+email-rs = { git = "https://github.com/sking789/email-rs.git", branch = "multi-dkim-header" }

@@ -59,7 +59,6 @@ all: build/test_contracts build/test_rlp build/generator build/validator build/g
 
 all-via-docker: generate-protocol
 	mkdir -p build
-	docker build -f docker/DOCKERFILE -t riscv-with-rust ./docker 
 	docker run --rm -v `pwd`:/code ${RUST_BUILDER_DOCKER} bash -c "cd /code && make build/libup_encrypt.a"
 	docker run --rm -v `pwd`:/code ${BUILDER_DOCKER} bash -c "cd /code && make"
 	make patch-generator
@@ -142,7 +141,9 @@ build/test_ripemd160: c/ripemd160/test_ripemd160.c c/ripemd160/ripemd160.h c/rip
 	riscv64-unknown-elf-run build/test_ripemd160
 
 build/libup_encrypt.a: 
-	cd deps/up-encrypt && cargo build --release --target riscv64imac-unknown-none-elf -Z unstable-options && cp target/riscv64imac-unknown-none-elf/release/libup_encrypt.a ../../build/ && cargo clean
+	cd deps/up-encrypt && cargo build --release --target riscv64imac-unknown-none-elf -Z unstable-options \
+	&& cp target/riscv64imac-unknown-none-elf/release/libup_encrypt.a ../../build/ \
+	&& cp up_encrypt.h ../../build/ && cargo clean
 
 build/execution_state.o: deps/evmone/lib/evmone/execution_state.cpp
 	$(CXX) $(CXXFLAGS) $(LDFLAGS) -c -o $@ $<

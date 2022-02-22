@@ -28,7 +28,7 @@ use gw_types::{
 use rlp::RlpStream;
 use std::{fs, io::Read, path::PathBuf};
 
-pub const L2TX_MAX_CYCLES: u64 = 70_000_0000;
+pub const L2TX_MAX_CYCLES: u64 = 7000_0000;
 
 // meta contract
 pub const META_VALIDATOR_PATH: &str = "../build/godwoken-scripts/meta-contract-validator";
@@ -41,7 +41,7 @@ pub const SUDT_VALIDATOR_SCRIPT_TYPE_HASH: [u8; 32] = [0xa2u8; 32];
 pub const SECP_DATA: &[u8] = include_bytes!("../../build/secp256k1_data");
 // polyjuice
 pub const BIN_DIR: &str = "../build";
-pub const GENERATOR_NAME: &str = "generator.aot";
+pub const GENERATOR_NAME: &str = "generator_log.aot";
 pub const VALIDATOR_NAME: &str = "validator";
 
 pub const ROLLUP_SCRIPT_HASH: [u8; 32] = [0xa9u8; 32];

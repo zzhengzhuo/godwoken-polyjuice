@@ -5,7 +5,7 @@ use crate::helper::{
     self, build_eth_l2_script, new_account_script, new_block_info, setup, PolyjuiceArgsBuilder,
     CKB_SUDT_ACCOUNT_ID, L2TX_MAX_CYCLES,
 };
-use ethabi::{ethereum_types::U256, Contract, Token, decode, ParamType,};
+use ethabi::{decode, ethereum_types::U256, Contract, ParamType, Token};
 use gw_common::state::State;
 use gw_generator::traits::StateExt;
 use gw_store::chain_view::ChainView;
@@ -90,7 +90,11 @@ fn test_dkim_validate() {
         let block_info = new_block_info(0, 2, 0);
         let contract = Contract::load(INIT_ABI.as_bytes()).unwrap();
         // let email = "123";
-        let email = include_str!("./emails/qq.eml");
+        let raw_email = include_str!("./emails/qq.eml");
+        let email = email_rs::Email::from_str(raw_email).unwrap();
+        let dkim = email.dkim_headers.get(0).unwrap();
+        let selector = dkim.selector.clone();
+        let sdid = dkim.sdid.clone();
         // println!("email: {}",email);
         let n = hex::decode("cfb0520e4ad78c4adb0deb5e605162b6469349fc1fde9269b88d596ed9f3735c00c592317c982320874b987bcc38e8556ac544bdee169b66ae8fe639828ff5afb4f199017e3d8e675a077f21cd9e5c526c1866476e7ba74cd7bb16a1c3d93bc7bb1d576aedb4307c6b948d5b8c29f79307788d7a8ebf84585bf53994827c23a5").unwrap();
         let e = U256::from_str_radix("65537", 10).unwrap();
@@ -102,7 +106,9 @@ fn test_dkim_validate() {
                 Token::Uint(e),
                 // Token::Bytes(vec![1,1,1]),
                 Token::Bytes(n.clone()),
-                Token::Bytes(email.as_bytes().to_vec()),
+                Token::Bytes(selector.as_bytes().to_vec()),
+                Token::Bytes(sdid.as_bytes().to_vec()),
+                Token::Bytes(raw_email.as_bytes().to_vec()),
             ])
             .unwrap();
 

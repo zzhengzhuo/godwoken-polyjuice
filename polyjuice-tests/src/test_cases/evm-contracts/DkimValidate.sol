@@ -4,12 +4,18 @@ contract DkimValidate {
     function validate(
         uint32 e,
         bytes memory n,
+        bytes memory selector,
+        bytes memory sdid,
         bytes memory email
     ) public returns (bytes32[2] memory out) {
         bytes memory input = abi.encodePacked(
             e,
             uint32(n.length),
             n,
+            uint32(selector.length),
+            selector,
+            uint32(sdid.length),
+            sdid,
             uint32(email.length),
             email
         );

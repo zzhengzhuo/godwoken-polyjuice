@@ -1178,11 +1178,15 @@ int deal_email_subject(uint8_t *subject_header, uint32_t subject_header_len, uin
  * validate dkim
 
   ===============
-    input[0 .. 4]                                                     => email dkim rsa pubkey e
-    input[4 .. 8]                                                     => email dkim rsa pubkey n len
-    input[8 .. 8 + pubkey_n_len ]                                     => email dkim rsa pubkey n
-    input[8 + pubkey_n_len .. 12 + pubkey_n_len]                      => email utf8 len
-    input[12 + pubkey_n_len .. 12 + pubkey_n_n + email_len]           => email utf8 bytes
+    input[0 .. 4]                                                                                                       => email dkim rsa pubkey e
+    input[4 .. 8]                                                                                                       => email dkim rsa pubkey n len
+    input[8 .. 8 + pubkey_n_len ]                                                                                       => email dkim rsa pubkey n
+    input[8 + pubkey_n_len .. 12 + pubkey_n_len]                                                                        => email selector len
+    input[12 + pubkey_n_len .. 12 + pubkey_n_len + selector_len]                                                        => email selector
+    input[12 + pubkey_n_len + selector_len .. 16 + pubkey_n_len + selector_len]                                         => email sdid len
+    input[16 + pubkey_n_len + selector_len .. 16 + pubkey_n_len + selector_len + sdid_len]                              => email sdid
+    input[16 + pubkey_n_len + selector_len + sdid_len .. 20 + pubkey_n_len + selector_len + sdid_len]                   => email utf8 len
+    input[20 + pubkey_n_len + selector_len + sdid_len .. 20 + pubkey_n_len + selector_len + sdid_len + email_len]       => email utf8 bytes
   
   ================
     output[]
@@ -1204,8 +1208,14 @@ int email_parse(gw_context_t *ctx,
   reverse_vec_n(mut_input_src + 8, *pubkey_n_size);
   uint8_t *pubkey_n = mut_input_src + 8;
   reverse_vec_n(mut_input_src + 8 + *pubkey_n_size, 4);
-  uint32_t *email_len = (uint32_t *)(mut_input_src + 8 + *pubkey_n_size);
-  uint8_t *raw_email = mut_input_src + 12 + *pubkey_n_size;
+  uint32_t *selector_len = (uint32_t *)(mut_input_src + 8 + *pubkey_n_size);
+  uint8_t *selector = (uint8_t *)(mut_input_src + 12 + *pubkey_n_size);
+  reverse_vec_n(mut_input_src + 12 + *pubkey_n_size + *selector_len, 4);
+  uint32_t *sdid_len = (uint32_t *)(mut_input_src + 12 + *pubkey_n_size + *selector_len);
+  uint8_t *sdid = (uint8_t *)(mut_input_src + 16 + *pubkey_n_size + *selector_len);
+  reverse_vec_n(mut_input_src + 16 + *pubkey_n_size + *selector_len + *sdid_len, 4);
+  uint32_t *email_len = (uint32_t *)(mut_input_src + 16 + *pubkey_n_size + *selector_len + *sdid_len);
+  uint8_t *raw_email = mut_input_src + 20 + *pubkey_n_size + *selector_len + *sdid_len;
 
   ckb_debug("input parse succeed");
 
@@ -1221,6 +1231,10 @@ int email_parse(gw_context_t *ctx,
   uintptr_t dkim_msg_num = 0;
   const uint8_t *const *dkim_sig = NULL;
   const uintptr_t *dkim_sig_len = NULL;
+  const uint8_t *const *dkim_selector = NULL;
+  const uintptr_t *dkim_selector_len = NULL;
+  const uint8_t *const *dkim_sdid = NULL;
+  const uintptr_t *dkim_sdid_len = NULL;
   uintptr_t dkim_sig_num = 0;
 
   bool dkim_verify = false;
@@ -1243,7 +1257,9 @@ int email_parse(gw_context_t *ctx,
   {
     goto end;
   }
-  ret = get_email_dkim_sig(email, &dkim_sig, &dkim_sig_len, &dkim_sig_num);
+  ret = get_email_dkim_sig(email,
+                           &dkim_sig, &dkim_sig_len, &dkim_selector, &dkim_selector_len,
+                           &dkim_sdid, &dkim_sdid_len, &dkim_sig_num);
   if (ret != 0)
   {
     goto end;
@@ -1263,6 +1279,14 @@ int email_parse(gw_context_t *ctx,
   debug_print_int("dkim sig len: ", dkim_sig_len[0]);
   for (uintptr_t i = 0; i < dkim_msg_num; i++)
   {
+    if (*selector_len != *dkim_selector_len && memcmp(selector, dkim_selector, *selector_len) != 0)
+    {
+      break;
+    }
+    if (*sdid_len != *dkim_sdid_len && memcmp(sdid, dkim_sdid, *sdid_len) != 0)
+    {
+      break;
+    }
     int r = internel_rsa_validate_signature(*pubkey_e, pubkey_n, (uint32_t)(*pubkey_n_size), CKB_MD_SHA256,
                                             (const uint8_t *)(dkim_msg[i]), (uint32_t)(dkim_msg_len[i]),
                                             (const uint8_t *)(dkim_sig[i]), (uint32_t)(dkim_sig_len[i]));
