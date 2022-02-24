@@ -1352,9 +1352,15 @@ end:
     for (uintptr_t i = 0; i < dkim_sig_num; i++)
     {
       rust_free_vec_u8((uint8_t *)(dkim_sig[i]), dkim_sig_len[i], dkim_sig_len[i]);
+      rust_free_vec_u8((uint8_t *)(dkim_selector[i]),dkim_selector_len[i],dkim_selector_len[i]);
+      rust_free_vec_u8((uint8_t *)(dkim_sdid[i]),dkim_sdid_len[i],dkim_sdid_len[i]);
     }
     rust_free_ptr_vec((uint8_t **)dkim_sig, dkim_sig_num, dkim_sig_num);
+    rust_free_ptr_vec((uint8_t **)dkim_selector, dkim_sig_num, dkim_sig_num);
+    rust_free_ptr_vec((uint8_t **)dkim_sdid, dkim_sig_num, dkim_sig_num);
     rust_free_vec_usize((uintptr_t *)dkim_sig_len, dkim_sig_num, dkim_sig_num);
+    rust_free_vec_usize((uintptr_t *)dkim_sdid, dkim_sig_num, dkim_sig_num);
+    rust_free_vec_usize((uintptr_t *)dkim_sdid, dkim_sig_num, dkim_sig_num);
   }
   if (subject_header != NULL)
   {

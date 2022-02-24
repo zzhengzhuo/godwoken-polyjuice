@@ -45,7 +45,7 @@ ALL_OBJS := build/execution_state.o build/baseline.o build/analysis.o build/inst
   build/sha256.o build/memzero.o build/ripemd160.o build/bignum.o build/platform_util.o \
   build/rsa.o build/platform.o build/md.o build/memory_buffer_alloc.o build/rsa_internal.o build/mbedtls_sha512.o build/mbedtls_sha256.o build/mbedtls_sha1.o build/mbedtls_ripemd160.o \
   build/oid.o build/md5.o build/libup_encrypt.a
-BIN_DEPS := libup_encrypt.a c/contracts.h c/sudt_contracts.h c/other_contracts.h c/polyjuice.h c/polyjuice_utils.h build/secp256k1_data_info.h $(ALL_OBJS)
+BIN_DEPS := c/contracts.h c/sudt_contracts.h c/other_contracts.h c/polyjuice.h c/polyjuice_utils.h build/secp256k1_data_info.h $(ALL_OBJS)
 GENERATOR_DEPS := c/generator/secp256k1_helper.h $(BIN_DEPS)
 VALIDATOR_DEPS := c/validator/secp256k1_helper.h $(BIN_DEPS)
 
