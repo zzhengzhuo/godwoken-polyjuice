@@ -15,7 +15,7 @@ CFLAGS_INTX := -Ideps/intx/lib/intx -Ideps/intx/include
 CFLAGS_BN128 := -Ideps/bn128/include
 CFLAGS_ETHASH := -Ideps/ethash/include -Ideps/ethash/lib/ethash -Ideps/ethash/lib/keccak -Ideps/ethash/lib/support
 CFLAGS_CRYPTO_ALGORITHMS := -Ideps/crypto-algorithms
-CFLAGS_MBEDTLS := -Ideps/mbedtls/include -DMBEDTLS_MEMORY_BUFFER_ALLOC_C -DMBEDTLS_PLATFORM_C -DMBEDTLS_PLATFORM_MEMORY
+CFLAGS_MBEDTLS := -Ic/mbedtls -Ideps/mbedtls/include -DMBEDTLS_MEMORY_BUFFER_ALLOC_C -DMBEDTLS_PLATFORM_C -DMBEDTLS_PLATFORM_MEMORY -DMBEDTLS_CONFIG_FILE=\"config.h\"
 CFLAGS_EVMONE := -Ideps/evmone/lib/evmone -Ideps/evmone/include -Ideps/evmone/evmc/include
 CFLAGS_SMT := -Ideps/godwoken-scripts/c/deps/sparse-merkle-tree/c
 CFLAGS_GODWOKEN := -Ideps/godwoken-scripts/c
