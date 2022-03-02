@@ -21,6 +21,7 @@ git submodule update --init --recursive --depth=1
 cd $PROJECT_ROOT
 git submodule update --init --recursive --depth=1
 make all-via-docker
+make patch-generator && make patch-generator_log
 
 # fetch godwoken-scripts from godwoken-prebuilds image,
 # including meta-contract and sudt-contract
@@ -35,7 +36,8 @@ docker run --rm -v $GW_SCRIPTS_DIR:/build-dir \
 cd $TESTS_DIR
 export RUST_BACKTRACE=full
 # cargo test --package polyjuice-tests --bin polyjuice-tests -- test_cases::dkim_validate::test_dkim_validate --exact --nocapture
-# solc src/test_cases/evm-contracts/DkimValidate.sol --abi --bin -o src/test_cases/evm-contracts --overwrite
+solc src/test_cases/evm-contracts/RsaValidate.sol --abi --bin -o src/test_cases/evm-contracts --overwrite
+solc src/test_cases/evm-contracts/EmailParse.sol --abi --bin -o src/test_cases/evm-contracts --overwrite 
 
 RUST_LOG=debug cargo test -- --nocapture
 # cargo bench | egrep -v debug

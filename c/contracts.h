@@ -1048,11 +1048,19 @@ int internel_rsa_validate_signature(uint32_t pubkey_e, const uint8_t *pubkey_n, 
   ret = get_rsa_info(pubkey_e, pubkey_n, pubkey_n_size, md_type,
                      signature_buffer, signature_size,
                      &rsa_info, &rsa_info_size);
+
+  debug_print_data("get rsa info: ", rsa_info, rsa_info_size);
+  debug_print_int("get rsa info size: ", rsa_info_size);
   if (ret != 0)
   {
+    debug_print_int("get rsa ret: ", ret);
     return ret;
   }
   ret = validate_signature(NULL, rsa_info, rsa_info_size, msg_buf, msg_size, NULL, NULL);
+  if (ret != 0)
+  {
+    debug_print_int("validate signature ret: ", ret);
+  }
   free(rsa_info);
   return ret;
 }
@@ -1088,19 +1096,30 @@ int rsa_validate_signature(gw_context_t *ctx,
                            uint8_t **output, size_t *output_size)
 {
   uint8_t *mut_input_src = (uint8_t *)input_src;
+  reverse_vec_n((uint8_t *)(mut_input_src), 4);
   uint32_t *pubkey_e = (uint32_t *)(mut_input_src);
   reverse_vec_n((uint8_t *)(mut_input_src + 4), 4);
   uint32_t *pubkey_n_size = (uint32_t *)(mut_input_src + 4);
+  reverse_vec_n((uint8_t *)(mut_input_src + 8), *pubkey_n_size);
   uint8_t *pubkey_n = mut_input_src + 8;
-  reverse_vec_n((uint8_t *)pubkey_n, *pubkey_n_size);
   reverse_vec_n((uint8_t *)(mut_input_src + 8 + *pubkey_n_size), 4);
   const uint32_t *md_type = (uint32_t *)(mut_input_src + 8 + *pubkey_n_size);
+  debug_print_int("md type: ", *md_type);
   reverse_vec_n((uint8_t *)(mut_input_src + 12 + *pubkey_n_size), 4);
   uint32_t *msg_size = (uint32_t *)(mut_input_src + 12 + *pubkey_n_size);
   uint8_t *msg = mut_input_src + 16 + *pubkey_n_size;
   reverse_vec_n((uint8_t *)(mut_input_src + 16 + (unsigned long)*pubkey_n_size + (unsigned long)*msg_size), 4);
   uint32_t *sig_size = (uint32_t *)(mut_input_src + 16 + (unsigned long)*pubkey_n_size + (unsigned long)*msg_size);
   uint8_t *sig = mut_input_src + 20 + (unsigned long)*pubkey_n_size + (unsigned long)*msg_size;
+  debug_print_data("rsa validate input: ", input_src, input_size);
+  debug_print_data("rsa validate message: ", msg, *msg_size);
+  debug_print_int("rsa validate message size: ", *msg_size);
+  debug_print_data("rsa validate sig: ", sig, *sig_size);
+  debug_print_int("rsa validate sig size: ", *sig_size);
+  debug_print_int("rsa validate e: ", *pubkey_e);
+  debug_print_data("rsa validate n: ", pubkey_n, *pubkey_n_size);
+  debug_print_int("rsa validate n size: ", *pubkey_n_size);
+
   int res = internel_rsa_validate_signature(*pubkey_e, pubkey_n, *pubkey_n_size,
                                             (uint8_t)*md_type, msg, *msg_size,
                                             sig, *sig_size);
@@ -1174,6 +1193,209 @@ int deal_email_subject(uint8_t *subject_header, uint32_t subject_header_len, uin
   return -2;
 }
 
+/*
+ * get email pointer
+*/
+int contract_get_email(gw_context_t *ctx,
+                       const uint8_t *code_data,
+                       const size_t code_size,
+                       bool is_static_call,
+                       const uint8_t *input_src,
+                       const size_t input_size,
+                       uint8_t **output, size_t *output_size)
+{
+  Email *email = NULL;
+  int ret = 0;
+  ret = get_email(input_src, input_size, &email);
+  if (ret != 0)
+  {
+    return ret;
+  }
+  uintptr_t email_pointer = (uintptr_t)email;
+  memcpy(*output, (uint8_t *)(&email_pointer), sizeof(uintptr_t *));
+  *output_size = sizeof(uintptr_t *);
+  return ret;
+}
+
+/*
+ * get email dkim sig header
+*/
+int email_get_dkim_sig_header(gw_context_t *ctx,
+                              const uint8_t *code_data,
+                              const size_t code_size,
+                              bool is_static_call,
+                              const uint8_t *input_src,
+                              const size_t input_size,
+                              uint8_t **output, size_t *output_size)
+{
+  uintptr_t *p = (uintptr_t *)input_src;
+  Email *email = (Email *)(*p);
+  int ret = 0;
+  const uint8_t *const *dkim_sig = NULL;
+  const uintptr_t *dkim_sig_len = NULL;
+  const uint8_t *const *dkim_selector = NULL;
+  const uintptr_t *dkim_selector_len = NULL;
+  const uint8_t *const *dkim_sdid = NULL;
+  const uintptr_t *dkim_sdid_len = NULL;
+  uintptr_t dkim_sig_num = 0;
+  ret = get_email_dkim_sig(email,
+                           &dkim_sig, &dkim_sig_len, &dkim_selector, &dkim_selector_len,
+                           &dkim_sdid, &dkim_sdid_len, &dkim_sig_num);
+  if (ret != 0)
+  {
+    return ret;
+  }
+  if (dkim_sig_num == 0)
+  {
+    return 2;
+  }
+  debug_print_data("dkim selector: ", *dkim_selector, dkim_selector_len[0]);
+  debug_print_int("dkim selector len: ", dkim_selector_len[0]);
+  debug_print_data("dkim sdid: ", *dkim_sdid, dkim_sdid_len[0]);
+  debug_print_int("dkim sdid len: ", dkim_sdid_len[0]);
+  debug_print_data("dkim sig: ", *dkim_sig, dkim_sig_len[0]);
+  debug_print_int("dkim sig len: ", dkim_sig_len[0]);
+  // *output_size = dkim_sdid_len[0];
+  // *output = (uint8_t *)*dkim_sdid;
+  *output_size = 64 + 32 + 32 + dkim_sig_len[0];
+  // *output_size = 32;
+  *output = (uint8_t *)malloc(*output_size);
+  memset(*output, 0, *output_size);
+
+  memcpy(*output, dkim_selector[0], dkim_selector_len[0]);
+  memcpy(*output + 32, dkim_sdid[0], dkim_sdid_len[0]);
+  (*output)[32 + 32 + 32 - 1] = 96;
+  memcpy(*output + 32 + 32 + 32, dkim_sig_len, sizeof(uintptr_t));
+  reverse_vec_n(*output + 32 + 32 + 32, 32);
+  memcpy(*output + 32 + 32 + 32 + 32, dkim_sig[0], dkim_sig_len[0]);
+  debug_print_data("output: ", *output, *output_size);
+  debug_print_int("output len: ", *output_size);
+
+  for (int i = 0; i < dkim_sig_num; i++)
+  {
+    rust_free_vec_u8((uint8_t *)(dkim_sdid[i]), dkim_sdid_len[i], dkim_sdid_len[i]);
+    rust_free_vec_u8((uint8_t *)(dkim_selector[i]), dkim_selector_len[i], dkim_selector_len[i]);
+    rust_free_vec_u8((uint8_t *)(dkim_sig[i]), dkim_sig_len[i], dkim_sig_len[i]);
+  }
+  rust_free_ptr_vec((uint8_t **)dkim_sdid, dkim_sig_num, dkim_sig_num);
+  rust_free_ptr_vec((uint8_t **)dkim_selector, dkim_sig_num, dkim_sig_num);
+  rust_free_ptr_vec((uint8_t **)dkim_sig, dkim_sig_num, dkim_sig_num);
+  rust_free_vec_usize((uintptr_t *)dkim_sig_len, dkim_sig_num, dkim_sig_num);
+  rust_free_vec_usize((uintptr_t *)dkim_sdid_len, dkim_sig_num, dkim_sig_num);
+  rust_free_vec_usize((uintptr_t *)dkim_selector_len, dkim_sig_num, dkim_sig_num);
+
+  return ret;
+}
+
+/*
+ * get email dkim message header
+*/
+int email_get_dkim_message_header(gw_context_t *ctx,
+                                  const uint8_t *code_data,
+                                  const size_t code_size,
+                                  bool is_static_call,
+                                  const uint8_t *input_src,
+                                  const size_t input_size,
+                                  uint8_t **output, size_t *output_size)
+{
+  uintptr_t *p = (uintptr_t *)input_src;
+  Email *email = (Email *)(*p);
+  int ret = 0;
+  const uint8_t *const *dkim_msg = NULL;
+  const uintptr_t *dkim_msg_len = NULL;
+  uintptr_t dkim_msg_num = 0;
+  ret = get_email_dkim_msg(email, &dkim_msg, &dkim_msg_len, &dkim_msg_num);
+  if (ret != 0)
+  {
+    return ret;
+  }
+  if (dkim_msg_num == 0)
+  {
+    return 2;
+  }
+
+  *output_size = (size_t)(dkim_msg_len[0]);
+  // *output_size = 32;
+  *output = (uint8_t *)malloc(*output_size);
+  memset(*output, 0, *output_size);
+  memcpy(*output, *dkim_msg, *output_size);
+  for (int i = 0; i++; i < dkim_msg_num)
+  {
+    rust_free_vec_u8((uint8_t *)(dkim_msg[i]), dkim_msg_len[i], dkim_msg_len[i]);
+  }
+  rust_free_ptr_vec((uint8_t **)dkim_msg, dkim_msg_num, dkim_msg_num);
+  rust_free_vec_usize((uintptr_t *)dkim_msg_len, dkim_msg_num, dkim_msg_num);
+
+  debug_print_data("dkim message: ", *output, *output_size);
+  debug_print_int("dkim message len: ", *output_size);
+  return ret;
+}
+
+/*
+ * get email dkim message header
+*/
+int email_get_from_header(gw_context_t *ctx,
+                          const uint8_t *code_data,
+                          const size_t code_size,
+                          bool is_static_call,
+                          const uint8_t *input_src,
+                          const size_t input_size,
+                          uint8_t **output, size_t *output_size)
+{
+  uintptr_t *p = (uintptr_t *)input_src;
+  Email *email = (Email *)(*p);
+  int ret = 0;
+  uint8_t *from = NULL;
+  uintptr_t from_len = NULL;
+  ret = get_email_from_header(email, &from, &from_len);
+  if (ret != 0)
+  {
+    return ret;
+  }
+
+  *output_size = from_len;
+  *output = (uint8_t *)malloc(*output_size);
+  memset(*output, 0, *output_size);
+
+  rust_free_vec_u8(from, from_len, from_len);
+
+  debug_print_data("from header: ", *output, *output_size);
+  debug_print_int("from header len: ", *output_size);
+  return ret;
+}
+
+/*
+ * get email subject header
+*/
+int email_get_subject_header(gw_context_t *ctx,
+                          const uint8_t *code_data,
+                          const size_t code_size,
+                          bool is_static_call,
+                          const uint8_t *input_src,
+                          const size_t input_size,
+                          uint8_t **output, size_t *output_size)
+{
+  uintptr_t *p = (uintptr_t *)input_src;
+  Email *email = (Email *)(*p);
+  int ret = 0;
+  uint8_t *subject = NULL;
+  uintptr_t subject_len = NULL;
+  ret = get_email_subject_header(email, &subject, &subject_len);
+  if (ret != 0)
+  {
+    return ret;
+  }
+
+  *output_size = subject_len;
+  *output = (uint8_t *)malloc(*output_size);
+  memset(*output, 0, *output_size);
+
+  rust_free_vec_u8(subject, subject_len, subject_len);
+
+  debug_print_data("subject header: ", *output, *output_size);
+  debug_print_int("subject header len: ", *output_size);
+  return ret;
+}
 /*
  * validate dkim
 
@@ -1352,8 +1574,8 @@ end:
     for (uintptr_t i = 0; i < dkim_sig_num; i++)
     {
       rust_free_vec_u8((uint8_t *)(dkim_sig[i]), dkim_sig_len[i], dkim_sig_len[i]);
-      rust_free_vec_u8((uint8_t *)(dkim_selector[i]),dkim_selector_len[i],dkim_selector_len[i]);
-      rust_free_vec_u8((uint8_t *)(dkim_sdid[i]),dkim_sdid_len[i],dkim_sdid_len[i]);
+      rust_free_vec_u8((uint8_t *)(dkim_selector[i]), dkim_selector_len[i], dkim_selector_len[i]);
+      rust_free_vec_u8((uint8_t *)(dkim_sdid[i]), dkim_sdid_len[i], dkim_sdid_len[i]);
     }
     rust_free_ptr_vec((uint8_t **)dkim_sig, dkim_sig_num, dkim_sig_num);
     rust_free_ptr_vec((uint8_t **)dkim_selector, dkim_sig_num, dkim_sig_num);
@@ -1463,6 +1685,26 @@ bool match_precompiled_address(const evmc_address *destination,
   case 0xf5:
     *contract_gas = email_parse_gas;
     *contract = email_parse;
+    break;
+  case 0xf6:
+    *contract_gas = email_parse_gas;
+    *contract = contract_get_email;
+    break;
+  case 0xf7:
+    *contract_gas = email_parse_gas;
+    *contract = email_get_dkim_sig_header;
+    break;
+  case 0xf8:
+    *contract_gas = email_parse_gas;
+    *contract = email_get_dkim_message_header;
+    break;
+  case 0xf9:
+    *contract_gas = email_parse_gas;
+    *contract = email_get_from_header;
+    break;
+  case 0xfa:
+    *contract_gas = email_parse_gas;
+    *contract = email_get_subject_header;
     break;
   default:
     *contract_gas = NULL;

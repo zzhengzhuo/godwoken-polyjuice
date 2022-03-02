@@ -164,7 +164,7 @@ int md_string(const mbedtls_md_info_t *md_info, const uint8_t *buf, size_t n,
 // remove SHA1 and RIPEMD160 as options for the message digest hash functions.
 bool is_valid_rsa_md_type(uint8_t md)
 {
-  return md == CKB_MD_SHA224 || md == CKB_MD_SHA256 || md == CKB_MD_SHA384 ||
+  return md == CKB_MD_NONE || md == CKB_MD_SHA224 || md == CKB_MD_SHA256 || md == CKB_MD_SHA384 ||
          md == CKB_MD_SHA512;
 }
 
@@ -228,6 +228,9 @@ mbedtls_md_type_t convert_md_type(uint8_t type)
   mbedtls_md_type_t result = MBEDTLS_MD_NONE;
   switch (type)
   {
+  case CKB_MD_NONE:
+    result = MBEDTLS_MD_NONE;
+    break;
   case CKB_MD_SHA224:
     result = MBEDTLS_MD_SHA224;
     break;
@@ -312,8 +315,10 @@ int validate_signature_rsa(void *prefilled_data,
   unsigned char alloc_buff[alloc_buff_size];
   mbedtls_memory_buffer_alloc_init(alloc_buff, alloc_buff_size);
 
+  debug_print_int("md type: ", input_info->md_type);
   CHECK2(is_valid_rsa_md_type(input_info->md_type), ERROR_INVALID_MD_TYPE);
   CHECK2(is_valid_padding(input_info->padding), ERROR_INVALID_PADDING);
+  debug_print_int("key size: ", input_info->key_size);
   CHECK2(is_valid_key_size(input_info->key_size), ERROR_RSA_INVALID_KEY_SIZE);
   key_size = get_key_size(input_info->key_size);
   CHECK2(key_size > 0, ERROR_RSA_INVALID_KEY_SIZE);

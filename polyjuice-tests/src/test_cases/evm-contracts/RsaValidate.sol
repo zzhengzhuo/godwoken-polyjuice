@@ -20,9 +20,17 @@ contract RsaValidate {
         );
         // return input;
         uint32 len = uint32(input.length);
-        bytes32 output;
         assembly {
-            let ret := call(not(0), 0xf4, 0x0, input, len, output, 32)
+            let output := mload(0x40)
+            let ret := call(
+                not(0),
+                0xf4,
+                0x0,
+                add(input, 0x20),
+                len,
+                output,
+                32
+            )
             if iszero(ret) {
                 return(ret, 4)
             }
