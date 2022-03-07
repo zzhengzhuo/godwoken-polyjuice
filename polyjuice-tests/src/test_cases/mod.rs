@@ -29,8 +29,8 @@
 
 // rsa validate
 // pub(crate) mod rsa_validate;
-// // dkim validate
-// pub(crate) mod dkim_validate;
+// dkim validate
+pub(crate) mod dkim_validate;
 
 // email parse
-pub(crate) mod email_parse;
+// pub(crate) mod email_parse;

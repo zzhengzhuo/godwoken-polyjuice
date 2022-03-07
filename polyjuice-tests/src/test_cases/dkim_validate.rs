@@ -5,7 +5,7 @@ use crate::helper::{
     self, build_eth_l2_script, new_account_script, new_block_info, setup, PolyjuiceArgsBuilder,
     CKB_SUDT_ACCOUNT_ID, L2TX_MAX_CYCLES,
 };
-use ethabi::{ethereum_types::U256, Contract, ParamType, Token};
+use ethabi::{ethereum_types::U256, Contract, Token};
 use gw_common::state::State;
 use gw_generator::traits::StateExt;
 use gw_store::chain_view::ChainView;

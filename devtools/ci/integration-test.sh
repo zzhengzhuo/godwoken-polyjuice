@@ -12,10 +12,10 @@ if [ -d "$GODWOKEN_DIR" ]
 then
     echo "godwoken project already exists"
 else
-    git clone -b develop https://github.com/nervosnetwork/godwoken.git $GODWOKEN_DIR
+    git clone -b develop https://github.com/zzhengzhuo/godwoken.git $GODWOKEN_DIR
 fi
 cd $GODWOKEN_DIR
-git checkout 1dc4092926291542b76f4f80883f5c6959992510 # https://github.com/nervosnetwork/godwoken/commits/1dc4092
+git checkout polyjuice-test # https://github.com/nervosnetwork/godwoken/commits/1dc4092
 git submodule update --init --recursive --depth=1
 
 cd $PROJECT_ROOT

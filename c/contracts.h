@@ -1277,9 +1277,10 @@ int email_get_dkim_sig_header(gw_context_t *ctx,
     rust_free_vec_u8((uint8_t *)(dkim_selector[i]), dkim_selector_len[i], dkim_selector_len[i]);
     rust_free_vec_u8((uint8_t *)(dkim_sig[i]), dkim_sig_len[i], dkim_sig_len[i]);
   }
-  rust_free_ptr_vec((uint8_t **)dkim_sdid, dkim_sig_num, dkim_sig_num);
+
   rust_free_ptr_vec((uint8_t **)dkim_selector, dkim_sig_num, dkim_sig_num);
   rust_free_ptr_vec((uint8_t **)dkim_sig, dkim_sig_num, dkim_sig_num);
+  rust_free_ptr_vec((uint8_t **)dkim_sdid, dkim_sig_num, dkim_sig_num);
   rust_free_vec_usize((uintptr_t *)dkim_sig_len, dkim_sig_num, dkim_sig_num);
   rust_free_vec_usize((uintptr_t *)dkim_sdid_len, dkim_sig_num, dkim_sig_num);
   rust_free_vec_usize((uintptr_t *)dkim_selector_len, dkim_sig_num, dkim_sig_num);
@@ -1368,12 +1369,12 @@ int email_get_from_header(gw_context_t *ctx,
  * get email subject header
 */
 int email_get_subject_header(gw_context_t *ctx,
-                          const uint8_t *code_data,
-                          const size_t code_size,
-                          bool is_static_call,
-                          const uint8_t *input_src,
-                          const size_t input_size,
-                          uint8_t **output, size_t *output_size)
+                             const uint8_t *code_data,
+                             const size_t code_size,
+                             bool is_static_call,
+                             const uint8_t *input_src,
+                             const size_t input_size,
+                             uint8_t **output, size_t *output_size)
 {
   uintptr_t *p = (uintptr_t *)input_src;
   Email *email = (Email *)(*p);
@@ -1383,6 +1384,7 @@ int email_get_subject_header(gw_context_t *ctx,
   ret = get_email_subject_header(email, &subject, &subject_len);
   if (ret != 0)
   {
+    debug_print_int("get subject ret", ret);
     return ret;
   }
 
@@ -1423,21 +1425,21 @@ int email_parse(gw_context_t *ctx,
 {
   ckb_debug("email prase start");
   uint8_t *mut_input_src = (uint8_t *)input_src;
+  // reverse_vec_n(mut_input_src, 4);
+  // uint32_t *pubkey_e = (uint32_t *)(mut_input_src);
+  // reverse_vec_n(mut_input_src + 4, 4);
+  // uint32_t *pubkey_n_size = (uint32_t *)(mut_input_src + 4);
+  // reverse_vec_n(mut_input_src + 8, *pubkey_n_size);
+  // uint8_t *pubkey_n = mut_input_src + 8;
+  // reverse_vec_n(mut_input_src + 8 + *pubkey_n_size, 4);
+  // uint32_t *selector_len = (uint32_t *)(mut_input_src + 8 + *pubkey_n_size);
+  // uint8_t *selector = (uint8_t *)(mut_input_src + 12 + *pubkey_n_size);
+  // reverse_vec_n(mut_input_src + 12 + *pubkey_n_size + *selector_len, 4);
+  // uint32_t *sdid_len = (uint32_t *)(mut_input_src + 12 + *pubkey_n_size + *selector_len);
+  // uint8_t *sdid = (uint8_t *)(mut_input_src + 16 + *pubkey_n_size + *selector_len);
   reverse_vec_n(mut_input_src, 4);
-  uint32_t *pubkey_e = (uint32_t *)(mut_input_src);
-  reverse_vec_n(mut_input_src + 4, 4);
-  uint32_t *pubkey_n_size = (uint32_t *)(mut_input_src + 4);
-  reverse_vec_n(mut_input_src + 8, *pubkey_n_size);
-  uint8_t *pubkey_n = mut_input_src + 8;
-  reverse_vec_n(mut_input_src + 8 + *pubkey_n_size, 4);
-  uint32_t *selector_len = (uint32_t *)(mut_input_src + 8 + *pubkey_n_size);
-  uint8_t *selector = (uint8_t *)(mut_input_src + 12 + *pubkey_n_size);
-  reverse_vec_n(mut_input_src + 12 + *pubkey_n_size + *selector_len, 4);
-  uint32_t *sdid_len = (uint32_t *)(mut_input_src + 12 + *pubkey_n_size + *selector_len);
-  uint8_t *sdid = (uint8_t *)(mut_input_src + 16 + *pubkey_n_size + *selector_len);
-  reverse_vec_n(mut_input_src + 16 + *pubkey_n_size + *selector_len + *sdid_len, 4);
-  uint32_t *email_len = (uint32_t *)(mut_input_src + 16 + *pubkey_n_size + *selector_len + *sdid_len);
-  uint8_t *raw_email = mut_input_src + 20 + *pubkey_n_size + *selector_len + *sdid_len;
+  uint32_t *email_len = (uint32_t *)(mut_input_src);
+  uint8_t *raw_email = mut_input_src + 4;
 
   ckb_debug("input parse succeed");
 
@@ -1458,16 +1460,15 @@ int email_parse(gw_context_t *ctx,
   const uint8_t *const *dkim_sdid = NULL;
   const uintptr_t *dkim_sdid_len = NULL;
   uintptr_t dkim_sig_num = 0;
+  uintptr_t pos = 0;
 
-  bool dkim_verify = false;
-
-  if (input_size != 4 + *email_len + 4 + 4 + *pubkey_n_size)
-  {
-    debug_print_int("input size", input_size);
-    debug_print_int("email len", *email_len);
-    debug_print_int("pubkey len", *pubkey_n_size);
-    debug_print_data("input: ", input_src, input_size);
-  }
+  // if (input_size != 4 + *email_len)
+  // {
+  //   debug_print_int("input size", input_size);
+  //   debug_print_int("email len", *email_len);
+  //   debug_print_int("pubkey len", *pubkey_n_size);
+  //   debug_print_data("input: ", input_src, input_size);
+  // }
   ret = get_email(raw_email, *email_len, &email);
   if (ret != 0)
   {
@@ -1492,38 +1493,38 @@ int email_parse(gw_context_t *ctx,
     ret = -3;
     goto end;
   }
-  debug_print_data("pubkey n: ", pubkey_n, *pubkey_n_size);
-  debug_print_int("pubkey n size: ", (uint32_t)(*pubkey_n_size));
-  debug_print_int("pubkey e: ", *pubkey_e);
+  // debug_print_data("pubkey n: ", pubkey_n, *pubkey_n_size);
+  // debug_print_int("pubkey n size: ", (uint32_t)(*pubkey_n_size));
+  // debug_print_int("pubkey e: ", *pubkey_e);
   debug_print_data("dkim msg: ", dkim_msg[0], dkim_msg_len[0]);
   debug_print_int("dkim msg len: ", dkim_msg_len[0]);
   debug_print_data("dkim sig: ", dkim_sig[0], dkim_sig_len[0]);
   debug_print_int("dkim sig len: ", dkim_sig_len[0]);
-  for (uintptr_t i = 0; i < dkim_msg_num; i++)
-  {
-    if (*selector_len != *dkim_selector_len && memcmp(selector, dkim_selector, *selector_len) != 0)
-    {
-      break;
-    }
-    if (*sdid_len != *dkim_sdid_len && memcmp(sdid, dkim_sdid, *sdid_len) != 0)
-    {
-      break;
-    }
-    int r = internel_rsa_validate_signature(*pubkey_e, pubkey_n, (uint32_t)(*pubkey_n_size), CKB_MD_SHA256,
-                                            (const uint8_t *)(dkim_msg[i]), (uint32_t)(dkim_msg_len[i]),
-                                            (const uint8_t *)(dkim_sig[i]), (uint32_t)(dkim_sig_len[i]));
-    if (r == 0)
-    {
-      dkim_verify = true;
-      break;
-    }
-    debug_print_int("dkim verify ret: ", r);
-  }
-  if (!dkim_verify)
-  {
-    ret = -4;
-    goto end;
-  }
+  // for (uintptr_t i = 0; i < dkim_msg_num; i++)
+  // {
+  //   if (*selector_len != *dkim_selector_len && memcmp(selector, dkim_selector, *selector_len) != 0)
+  //   {
+  //     break;
+  //   }
+  //   if (*sdid_len != *dkim_sdid_len && memcmp(sdid, dkim_sdid, *sdid_len) != 0)
+  //   {
+  //     break;
+  //   }
+  //   int r = internel_rsa_validate_signature(*pubkey_e, pubkey_n, (uint32_t)(*pubkey_n_size), CKB_MD_SHA256,
+  //                                           (const uint8_t *)(dkim_msg[i]), (uint32_t)(dkim_msg_len[i]),
+  //                                           (const uint8_t *)(dkim_sig[i]), (uint32_t)(dkim_sig_len[i]));
+  //   if (r == 0)
+  //   {
+  //     dkim_verify = true;
+  //     break;
+  //   }
+  //   debug_print_int("dkim verify ret: ", r);
+  // }
+  // if (!dkim_verify)
+  // {
+  //   ret = -4;
+  //   goto end;
+  // }
 
   ret = get_email_subject_header(email, &subject_header, &subject_header_len);
   debug_print_data("subject_header: ", subject_header, subject_header_len);
@@ -1554,10 +1555,25 @@ int email_parse(gw_context_t *ctx,
     goto end;
   }
 
-  *output = (uint8_t *)malloc(64);
+  *output_size = 32 + 32 + 32 + 32 + 32 + 32 + 32 + dkim_sig_len[0] + 32 + dkim_msg_len[0];
+  *output = (uint8_t *)malloc(*output_size);
+  memset(*output, 0, *output_size);
   memcpy(*output, from_hash, 32);
   memcpy(*output + 32, subject_header_bytes, 32);
-  *output_size = 64;
+  memcpy(*output + 32 + 32, dkim_selector[0], dkim_selector_len[0]);
+  memcpy(*output + 32 + 32 + 32, dkim_sdid[0], dkim_sdid_len[0]);
+  *(*output + 32 + 32 + 32 + 32 + 32 - 1) = 0xc0;
+  pos = 32 + 32 + 32 + 32 + 32 + 32 + 32 + dkim_sig_len[0];
+  memcpy(*output + 32 + 32 + 32 + 32 + 32, &pos, sizeof(uintptr_t));
+  reverse_vec_n(*output + 32 + 32 + 32 + 32 + 32, 32);
+
+  memcpy(*output + 32 + 32 + 32 + 32 + 32 + 32, &(dkim_sig_len[0]), sizeof(uintptr_t));
+  reverse_vec_n(*output + 32 + 32 + 32 + 32 + 32 + 32, 32);
+  memcpy(*output + 32 + 32 + 32 + 32 + 32 + 32 + 32, dkim_sig[0], dkim_sig_len[0]);
+
+  memcpy(*output + 32 + 32 + 32 + 32 + 32 + 32 + 32 + dkim_sig_len[0], &(dkim_msg_len[0]), sizeof(uintptr_t));
+  reverse_vec_n(*output + 32 + 32 + 32 + 32 + 32 + 32 + 32 + dkim_sig_len[0], 32);
+  memcpy(*output + 32 + 32 + 32 + 32 + 32 + 32 + 32 + dkim_sig_len[0] + 32, dkim_msg[0], dkim_msg_len[0]);
 
 end:
   if (dkim_msg_num != 0)
