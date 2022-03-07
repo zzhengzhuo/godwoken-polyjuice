@@ -37,6 +37,11 @@
 #define BLAKE2F_FINAL_BLOCK_BYTES 0x1
 #define BLAKE2F_NON_FINAL_BLOCK_BYTES 0x0
 
+#define EMAIL_ADDRESS_INVALID -0x10
+#define MIN_EMAIL_LEN 6
+#define MAX_EMAIL_LEN 100
+#define FR_EMAIL_LEN (MAX_EMAIL_LEN / 31 + 1)
+
 /* pre-compiled Ethereum contracts */
 
 typedef int (*precompiled_contract_gas_fn)(const uint8_t *input_src,
@@ -79,6 +84,7 @@ int ecrecover(gw_context_t *ctx,
               const uint8_t *input_src,
               const size_t input_size, uint8_t **output, size_t *output_size)
 {
+  debug_print_data("ecrecover input: ", input_src, input_size);
   int ret;
   secp256k1_context context;
   uint8_t secp_data[CKB_SECP256K1_DATA_SIZE];
@@ -1398,6 +1404,83 @@ int email_get_subject_header(gw_context_t *ctx,
   debug_print_int("subject header len: ", *output_size);
   return ret;
 }
+
+/*
+ * hash email address
+*/
+int email_from_hash(uint8_t *email_from, uint32_t email_from_len, uint8_t const **hash)
+{
+  uint32_t at_index = 0;
+  bool is_gmail = false;
+  uint32_t dot_num = 0;
+
+  for (uint32_t i = 0; i < email_from_len; i++)
+  {
+    if (email_from[i] == '@')
+    {
+      at_index = i;
+    }
+    if (email_from[i] >= 0x41 && email_from[i] <= 0x5a)
+    {
+      email_from[i] += 0x20;
+    }
+  }
+  if (at_index == 0)
+  {
+    return EMAIL_ADDRESS_INVALID;
+  }
+
+  if (strlen("gmail.com") == email_from_len - at_index - 1 &&
+      memcmp(email_from + at_index, "gmail.com", strlen("gmail.com")) == 0)
+  {
+    is_gmail = true;
+  }
+
+  if (is_gmail)
+  {
+    for (uint32_t i = 0; i < at_index; i++)
+    {
+      while (i + dot_num < at_index && email_from[i + dot_num] == '.')
+      {
+        dot_num++;
+      }
+      if (i + dot_num >= at_index)
+      {
+        break;
+      }
+      email_from[i] = email_from[i + dot_num];
+    }
+    for (uint32_t i = at_index - dot_num; i < email_from_len - dot_num; i++)
+    {
+      email_from[i] = email_from[i + dot_num];
+    }
+  }
+
+  uint32_t padding_size = FR_EMAIL_LEN * 31 - (email_from_len - 1 - dot_num);
+  uint8_t *padding = (uint8_t *)malloc(padding_size);
+  memset(padding, 0, padding_size);
+
+  uint8_t from_hash[32];
+  SHA256_CTX hash_ctx_1;
+  sha256_init(&hash_ctx_1);
+  sha256_update(&hash_ctx_1, email_from, email_from_len - 1 - dot_num);
+  sha256_update(&hash_ctx_1, padding, padding_size);
+  sha256_final(&hash_ctx_1, from_hash);
+  free(padding);
+  debug_print_data("message: ", from_hash, 32);
+  for (int i = 0; i < 16; i++)
+  {
+    uint8_t c = from_hash[i];
+    from_hash[i] = from_hash[32 - i - 1];
+    from_hash[32 - i - 1] = c;
+  }
+  from_hash[31] &= 0x1f;
+  debug_print_data("message: ", from_hash, 32);
+
+  *hash = from_hash;
+  return SUCCESS;
+}
+
 /*
  * validate dkim
 
@@ -1548,11 +1631,12 @@ int email_parse(gw_context_t *ctx,
     goto end;
   }
 
-  uint8_t from_hash[32];
-  SHA256_CTX hash_ctx_1;
-  sha256_init(&hash_ctx_1);
-  sha256_update(&hash_ctx_1, from_header, from_header_len - 1);
-  sha256_final(&hash_ctx_1, from_hash);
+  uint8_t const *from_hash;
+  ret = email_from_hash(from_header, from_header_len, &from_hash);
+  if (ret != 0)
+  {
+    goto end;
+  }
 
   ret = deal_email_subject(subject_header, subject_header_len, &subject_header_bytes);
   debug_print_data("subject header bytes: ", subject_header_bytes, 32);

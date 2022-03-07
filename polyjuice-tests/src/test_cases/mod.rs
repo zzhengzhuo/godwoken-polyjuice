@@ -18,7 +18,7 @@
 // //  The account polyjuice want to create already created by meta_contract
 // pub(crate) mod account_already_exists;
 
-// pub(crate) mod ecrecover;
+pub(crate) mod ecrecover;
 // pub(crate) mod eth_to_godwoken_addr;
 // pub(crate) mod pre_compiled_contracts;
 // pub(crate) mod recover_account;
