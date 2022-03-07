@@ -1472,12 +1472,15 @@ int email_parse(gw_context_t *ctx,
   ret = get_email(raw_email, *email_len, &email);
   if (ret != 0)
   {
+    debug_print_int("input email len: ", *email_len);
+    debug_print_int("get email failed: ", ret);
     goto end;
   }
 
   ret = get_email_dkim_msg(email, &dkim_msg, &dkim_msg_len, &dkim_msg_num);
   if (ret != 0)
   {
+    debug_print_int("get email dkim msg failed: ", ret);
     goto end;
   }
   ret = get_email_dkim_sig(email,
@@ -1485,11 +1488,14 @@ int email_parse(gw_context_t *ctx,
                            &dkim_sdid, &dkim_sdid_len, &dkim_sig_num);
   if (ret != 0)
   {
+    debug_print_int("get email dkim sig failed: ", ret);
     goto end;
   }
 
   if (dkim_msg_num != dkim_sig_num)
   {
+    debug_print_int("dkim msg num: ", dkim_msg_num);
+    debug_print_int("dkim sig num: ", dkim_sig_num);
     ret = -3;
     goto end;
   }
@@ -1574,6 +1580,8 @@ int email_parse(gw_context_t *ctx,
   memcpy(*output + 32 + 32 + 32 + 32 + 32 + 32 + 32 + dkim_sig_len[0], &(dkim_msg_len[0]), sizeof(uintptr_t));
   reverse_vec_n(*output + 32 + 32 + 32 + 32 + 32 + 32 + 32 + dkim_sig_len[0], 32);
   memcpy(*output + 32 + 32 + 32 + 32 + 32 + 32 + 32 + dkim_sig_len[0] + 32, dkim_msg[0], dkim_msg_len[0]);
+
+  debug_print_data("get dkim validate output: ", *output, *output_size);
 
 end:
   if (dkim_msg_num != 0)
