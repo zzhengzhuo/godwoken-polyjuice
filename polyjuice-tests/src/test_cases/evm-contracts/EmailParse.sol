@@ -70,10 +70,11 @@ contract EmailParse {
                     and(add(add(returndatasize(), 0x20), 0x1f), not(0x1f))
                 )
             )
+            mstore(dkim_msg, returndatasize())
             returndatacopy(add(dkim_msg, 0x20), 0, returndatasize())
         }
         uint256 ret = validate_rsa(e, n, dkim_msg, sig);
-      
+
         return ret;
         // bytes memory rsa = abi.encodePacked(
         //     e,
