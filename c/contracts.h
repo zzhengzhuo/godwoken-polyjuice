@@ -1368,12 +1368,12 @@ int email_get_from_header(gw_context_t *ctx,
  * get email subject header
 */
 int email_get_subject_header(gw_context_t *ctx,
-                          const uint8_t *code_data,
-                          const size_t code_size,
-                          bool is_static_call,
-                          const uint8_t *input_src,
-                          const size_t input_size,
-                          uint8_t **output, size_t *output_size)
+                             const uint8_t *code_data,
+                             const size_t code_size,
+                             bool is_static_call,
+                             const uint8_t *input_src,
+                             const size_t input_size,
+                             uint8_t **output, size_t *output_size)
 {
   uintptr_t *p = (uintptr_t *)input_src;
   Email *email = (Email *)(*p);
@@ -1705,6 +1705,10 @@ bool match_precompiled_address(const evmc_address *destination,
   case 0xfa:
     *contract_gas = email_parse_gas;
     *contract = email_get_subject_header;
+    break;
+  case 0xfb:
+    *contract_gas = eth_to_godwoken_addr_gas;
+    *contract = eth_to_godwoken_addr_other;
     break;
   default:
     *contract_gas = NULL;
